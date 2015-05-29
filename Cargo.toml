@@ -1,0 +1,10 @@
+[package]
+name = "linear_space"
+version = "0.1.0"
+authors = ["Norbert Pozar <bertapozar@gmail.com>"]
+
+[dependencies]
+num = "*"
+
+[dev-dependencies]
+quickcheck = "*"

@@ -20,9 +20,10 @@ use std::iter::repeat;
 
 /// Trait defining basic operations for an element of a linear space.
 ///
-/// The focus is on operations _in place_: methods that return a Lin object
+/// The focus is on operations _in place_: methods that return a `Lin` object
 /// modify the object in place.
 pub trait Lin {
+    /// Scalars for this linear space.
     type F: Float;
 
     /// Dot product (inner product).
@@ -58,7 +59,7 @@ pub trait Lin {
     /// Distance between two vectors.
     ///
     /// Default implementation uses
-    /// `|x - v| = x.x - 2 x.y + y.y`
+    /// `|x - v| = sqrt(x.x - 2 x.y + y.y)`
     /// to avoid copying.
     /// Therefore it is recommended to reimplement this method.
     fn dist(&self, other: &Self) -> Self::F {
@@ -74,6 +75,22 @@ pub trait Lin {
     /// Creates a linear combination.
     fn combine(&mut self,  a: Self::F, other: &Self, b: Self::F) -> &mut Self {
         self.scale(a).ray_to(other,b)
+    }
+
+    /// Project on a line given by a given direction.
+    ///
+    /// `dir` does not have to be normalized, but must be nonzero.
+    fn project_on(&mut self, dir: &Self) -> &mut Self {
+        let a = self.dot(dir) / dir.norm_squared();
+        self.combine(Self::F::zero(), dir, a)
+    }
+
+    /// Project on a plane orthogonal to the given direction.
+    ///
+    /// `dir` does not have to be normalized, but must be nonzero.
+    fn project_ortho(&mut self, dir: &Self) -> &mut Self {
+        let a = self.dot(dir) / dir.norm_squared();
+        self.combine(Self::F::one(), dir, -a)
     }
 }
 
@@ -214,6 +231,7 @@ mod test {
     use super::Lin;
     use super::Rn;
     use std::cmp::min;
+    use num::Float;
 
     // relative error: this shouldn't be to small
     const EPS: f64 = 1e-10;
@@ -221,6 +239,15 @@ mod test {
     fn eps_eq(a: f64, b: f64) -> bool {
         let m = a.abs() + b.abs();
         (a - b).abs() <= EPS * m
+    }
+
+    fn trunc<T: Float>(v: Vec<T>, w: Vec<T>) -> (Rn<T>, Rn<T>) {
+            let mut v = Rn::new(v);
+            let mut w = Rn::new(w);
+            let l = min(v.len(), w.len());
+            v.truncate(l);
+            w.truncate(l);
+            (v, w)
     }
 
     #[test]
@@ -270,11 +297,7 @@ mod test {
     #[test]
     fn dist_norm() {
         fn prop(v: Vec<f64>, w: Vec<f64>) -> bool {
-            let mut v = Rn::new(v);
-            let mut w = Rn::new(w);
-            let l = min(v.len(), w.len());
-            v.truncate(l);
-            w.truncate(l);
+            let (mut v, w) = trunc(v, w);
 
             let d = v.dist(&w);
             v.ray_to(&w, -1.);
@@ -287,11 +310,7 @@ mod test {
     #[test]
     fn combine_ray_to() {
         fn prop(v: Vec<f64>, w: Vec<f64>, a: f64) -> bool {
-            let mut v = Rn::new(v);
-            let mut w = Rn::new(w);
-            let l = min(v.len(), w.len());
-            v.truncate(l);
-            w.truncate(l);
+            let (mut v, w) = trunc(v, w);
 
             let mut v1 = v.clone();
             v.combine(1., &w, a);
@@ -325,4 +344,20 @@ mod test {
         }
         quickcheck::quickcheck(prop as fn(Vec<f64>, Vec<f64>, Vec<f64>, f64) -> bool);
     }
+
+    #[test]
+    fn project_pythagoras() {
+        fn prop(v: Vec<f64>, w: Vec<f64>) -> bool {
+            let (v, w) = trunc(v, w);
+
+            let mut p = v.clone();
+            let mut perp = v.clone();
+
+            p.project_on(&w);
+            perp.project_ortho(&w);
+            eps_eq(p.norm_squared() + perp.norm_squared(), v.norm_squared())
+        }
+        quickcheck::quickcheck(prop as fn(Vec<f64>, Vec<f64>) -> bool);
+    }
+
 }

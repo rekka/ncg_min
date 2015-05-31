@@ -4,6 +4,7 @@
 use num::{Float};
 
 /// Implementation of `secant2` method by _Hager & Zhang'06_.
+#[derive(Debug,Clone,Copy)]
 pub struct Secant2<F: Float> {
     delta: F,
     sigma: F,
@@ -13,6 +14,7 @@ pub struct Secant2<F: Float> {
     max_iter: i32,
 }
 
+#[derive(Debug,Clone,Copy)]
 pub enum Secant2Error {
     MaxIterReached(i32),
 }

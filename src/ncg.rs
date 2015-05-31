@@ -1,7 +1,7 @@
 //! Implementation of a Nonlinear Conjugate Gradient method.
 
-#![allow(dead_code)]
-use num::{Float};
+use num::{Float, Zero, One};
+use lin::{Lin};
 
 /// Implementation of `secant2` method by _Hager & Zhang'06_.
 #[derive(Debug,Clone,Copy)]
@@ -12,16 +12,24 @@ pub struct Secant2<F: Float> {
     theta: F,
     rho: F,
     max_iter: i32,
+    ubracket_max_iter: i32,
+    init_bracket_max_iter: i32,
 }
 
 #[derive(Debug,Clone,Copy)]
 pub enum Secant2Error {
     MaxIterReached(i32),
+    InitBracketMaxIterReached(i32),
+    UBracketMaxIterReached(i32),
 }
 
-impl Secant2<f64> {
+trait Secant2Default<F: Float> {
+    fn secant2_default() -> Secant2<F>;
+}
+
+impl Secant2Default<f32> for f32 {
     // Defaults for `secant2` method given in [HZ'06]
-    pub fn new() -> Self {
+    fn secant2_default() -> Secant2<f32> {
         Secant2 {
             delta: 0.1,
             sigma: 0.9,
@@ -29,8 +37,38 @@ impl Secant2<f64> {
             theta: 0.5,
             rho: 5.,
             max_iter: 32,
+            ubracket_max_iter: 32,
+            init_bracket_max_iter: 16,
         }
     }
+}
+
+impl Secant2Default<f64> for f64 {
+    // Defaults for `secant2` method given in [HZ'06]
+    fn secant2_default() -> Secant2<f64> {
+        Secant2 {
+            delta: 0.1,
+            sigma: 0.9,
+            epsilon: 1e-6,
+            theta: 0.5,
+            rho: 5.,
+            max_iter: 32,
+            ubracket_max_iter: 32,
+            init_bracket_max_iter: 16,
+        }
+    }
+}
+
+impl<F: Float + Secant2Default<F>> Secant2<F> {
+    pub fn new() -> Self {
+        F::secant2_default()
+    }
+}
+
+enum BracketResult<F> {
+    Ok((F, F, F), (F, F, F)),
+    MaxIterReached(i32),
+    // Wolfe(F), // TODO: implement early escape if solution is found during bracketing
 }
 
 impl<F: Float> Secant2<F> {
@@ -46,7 +84,12 @@ impl<F: Float> Secant2<F> {
         // ϕ(0) + ε_k
         let fi = o.1 + self.epsilon;
         // bracket starting interval
-        let mut ab = self.bracket(o, triple(f, c), f);
+        let mut ab = match self.bracket(o, triple(f, c), f) {
+            BracketResult::Ok(a, b) => (a, b),
+            // BracketResult::Wolfe(x) => return Ok(x),
+            BracketResult::MaxIterReached(n) =>
+                return Err(Secant2Error::InitBracketMaxIterReached(n)),
+        };
 
         // implementation of secant2 method from [HZ'06]
         for _ in 0..self.max_iter {
@@ -72,7 +115,13 @@ impl<F: Float> Secant2<F> {
                 cx = secant(a, c);
                 ab.0 = c;
             } else {
-                ab = self.ubracket(a, c, f, fi);
+                ab = match self.ubracket(a, c, f, fi) {
+                    BracketResult::Ok(a, b) => (a, b),
+                    // BracketResult::Wolfe(x) => return Ok(x),
+                    BracketResult::MaxIterReached(n) =>
+                        return Err(Secant2Error::UBracketMaxIterReached(n)),
+                };
+
                 continue;
             }
             let (a, b) = ab;
@@ -85,7 +134,12 @@ impl<F: Float> Secant2<F> {
                 } else if c.1 <= fi {
                     ab.0 = c;
                 } else {
-                    ab = self.ubracket(a, c, f, fi);
+                    ab = match self.ubracket(a, c, f, fi) {
+                        BracketResult::Ok(a, b) => (a, b),
+                        // BracketResult::Wolfe(x) => return Ok(x),
+                        BracketResult::MaxIterReached(n) =>
+                            return Err(Secant2Error::UBracketMaxIterReached(n)),
+                    };
                 }
             }
 
@@ -98,7 +152,10 @@ impl<F: Float> Secant2<F> {
     // The format of the triples is `(x, f(x), f'(x))`.
     //
     // - `fi` is `\phi(0) + \epsilon_k`
-    fn ubracket<Func>(&self, mut a: (F, F, F), mut b: (F, F, F), f: &mut Func, fi: F) -> ((F, F, F), (F, F, F))
+    fn ubracket<Func>(&self,
+                      mut a: (F, F, F),
+                      mut b: (F, F, F),
+                      f: &mut Func, fi: F) -> BracketResult<F>
         where Func: FnMut(F) -> (F, F) {
         // preconditions
         assert!(a.0 < b.0);
@@ -106,12 +163,12 @@ impl<F: Float> Secant2<F> {
         assert!(b.2 < F::zero());
         assert!(a.1 <= fi && fi < b.1);
 
-        loop {
+        for _ in 0..self.ubracket_max_iter {
             let cx = a.0 + self.theta * (b.0 - a.0);
             let c = triple(f, cx);
 
             if c.2 >= F::zero() {
-                return (a, c);
+                return BracketResult::Ok(a, c);
             } else {
                 if c.1 <= fi {
                     a = c;
@@ -120,10 +177,15 @@ impl<F: Float> Secant2<F> {
                 }
             }
         }
+
+        BracketResult::MaxIterReached(self.ubracket_max_iter)
     }
 
     //Initial bracketing: `bracket(c)` method in [HZ'06]
-    fn bracket<Func>(&self, mut a: (F, F, F), mut b: (F, F, F), f: &mut Func) -> ((F, F, F), (F, F, F))
+    fn bracket<Func>(&self,
+                     mut a: (F, F, F),
+                     mut b: (F, F, F),
+                     f: &mut Func) -> BracketResult<F>
         where Func: FnMut(F) -> (F, F) {
         // preconditions
         assert!(a.0 < b.0);
@@ -132,9 +194,9 @@ impl<F: Float> Secant2<F> {
         let o = a;
         let fi = o.1 + self.epsilon;
 
-        loop {
+        for _ in 0..self.init_bracket_max_iter {
             if b.2 >= F::zero() {
-                return (a, b);
+                return BracketResult::Ok(a, b);
             } else if b.1 > fi {
                 return self.ubracket(o, b, f, fi);
             } else {
@@ -144,6 +206,7 @@ impl<F: Float> Secant2<F> {
             }
         }
 
+        BracketResult::MaxIterReached(self.init_bracket_max_iter)
     }
 
     fn wolfe(&self, c: (F, F, F), fi: F, fd0: F) -> bool {
@@ -163,11 +226,92 @@ fn secant<F: Float>(a: (F, F, F), b: (F, F, F)) -> F {
     (a.0 * b.2 - b.0 * a.2) / (b.2 - a.2)
 }
 
+/// Implementation of a Nonlinear Conjugate Gradient method.
+#[derive(Debug,Clone,Copy)]
+pub struct NonlinearCG<F: Float> {
+    line_method: Secant2<F>,
+    alpha0: F,
+    psi2: F,
+    grad_norm_tol: F,
+    max_iter: i32,
+}
+
+#[derive(Debug,Clone,Copy)]
+pub enum NonlinearCGError {
+    LineMethodError(Secant2Error),
+    MaxIterReached(i32),
+}
+
+impl NonlinearCG<f64> {
+    pub fn new() -> Self {
+        NonlinearCG {
+            line_method: f64::secant2_default(),
+            alpha0: 1.,
+            psi2: 2.,
+            grad_norm_tol: 1e-3,
+            max_iter: 100,
+        }
+    }
+}
+
+impl<F: Float> NonlinearCG<F> {
+    /// Mininimize the given nonlinear function over a linear space.
+    ///
+    /// The function `f` must provide its value as well as its gradient,
+    /// returned in the provided `&mut V` (to avoid allocation).
+    /// `x0` is used as the initial guess.
+    pub fn minimize<Func, V>(&self, x0: &V, f: &mut Func) -> Result<V, NonlinearCGError>
+        where Func: FnMut(&V, &mut V) -> F,
+              V : Lin<F=F> + Clone {
+        let mut x = x0.clone();
+        let mut grad = x0.clone();
+        let mut dir = x0.origin();
+        let mut x_temp = x0.clone();
+        let mut grad_temp = x0.clone();
+
+        let mut alpha = self.alpha0;
+
+        for _ in 0..self.max_iter {
+            // compute gradient
+            f(&x, &mut grad);
+
+            // test gradient
+            if grad.norm() < self.grad_norm_tol {
+                return Ok(x);
+            }
+
+            // compute new direction
+            let beta = V::F::zero(); // steepest descent
+            dir.combine(beta, &grad, -V::F::one());
+
+            // minimize along the ray
+            let r;
+            {
+                let mut f_line = |t| {
+                    x_temp.clone_from(&x);
+                    x_temp.ray_to(&dir, t);
+                    let v = f(&x_temp, &mut grad_temp);
+                    (v, grad_temp.dot(&dir))
+                };
+                r = self.line_method.find_wolfe(self.psi2 * alpha, &mut f_line);
+            }
+            match r {
+                Ok(t) => alpha = t,
+                Err(e) => return Err(NonlinearCGError::LineMethodError(e)),
+            }
+
+            // update position
+            x.ray_to(&dir, alpha);
+        }
+
+        return Err(NonlinearCGError::MaxIterReached(self.max_iter));
+    }
+}
 
 #[cfg(test)]
 
 mod test {
-    use super::Secant2;
+    use super::*;
 
     #[test]
     fn quadratic() {
@@ -194,5 +338,22 @@ mod test {
         let r = s.find_wolfe(1.025, &mut f);
 
         assert!(r.is_ok());
+    }
+
+    #[test]
+    fn quadratic_wrong_dir() {
+        let s = Secant2::new();
+
+        // gradient has wrong sign
+        fn f(t: f64) -> (f64, f64) {
+            ((1. + 2. * t).powi(2), -4. * (1. + 2. * t))
+        }
+
+        let r = s.find_wolfe(1., &mut f);
+
+        match r {
+            Err(Secant2Error::InitBracketMaxIterReached(_)) => (),
+            _ => panic!("unexpected result: {:?}", r),
+        }
     }
 }

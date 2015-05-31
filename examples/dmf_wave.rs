@@ -30,14 +30,40 @@ fn wave_energy(u: &Rn<f64>, u_n: &Rn<f64>, u_n_1: &Rn<f64>,
     e
 }
 
+// Discrete Morse Flow energy for the wave equation with less energy dissipation.
+fn wave_energy_conservative(u: &Rn<f64>, u_n: &Rn<f64>, u_n_1: &Rn<f64>,
+               grad_u: &mut Rn<f64>, h: f64, kappa: f64) -> f64 {
+    let mut v = u.clone();
+    v.ray_to(&u_n, -2.);
+    v.add_mut(&u_n_1);
+
+    grad_u[0] = 0.;
+    grad_u[u.len() - 1] = 0.;
+    for i in 1..u.len() - 1 {
+       grad_u[i] = (4. * v[i] + v[i-1] + v[i+1]) / (6. * h * h)
+           + (kappa / 2.) * (2. * u[i] - u[i-1] - u[i+1])
+           + (kappa / 2.) * (2. * u_n_1[i] - u_n_1[i-1] - u_n_1[i+1]);
+    }
+
+    let mut e = 0.;
+    for i in 1..u.len() {
+        e += (v[i-1].powi(2) + v[i-1] * v[i] + v[i].powi(2)) / (6. * h * h)
+            + (kappa / 4.) * (u[i - 1] - u[i]).powi(2);
+    }
+    for i in 1..u.len() - 1 {
+        e += (kappa / 2.) * u[i] * (2. * u_n_1[i] - u_n_1[i-1] - u_n_1[i+1]);
+    }
+    e
+}
+
 fn main() {
     let domain = (0., 1.);
     let gamma = 1;
     let k = 32 * gamma;
-    let h_dx_ratio = 0.1;
+    let h_dx_ratio = 0.5;
     let h = 1. / k as f64 * h_dx_ratio; // time-step
     let kappa = 1. * (k as f64 / (domain.1 - domain.0)).powi(2);
-    let t_final = 1.5;
+    let t_final = 15.;
     let n_max = (t_final / h) as i32;
     let xi: Vec<f64> = (0..k+1).map(|i| domain.0 + (domain.1 - domain.0) * i as f64 / k as f64)
                                .collect();
@@ -50,7 +76,7 @@ fn main() {
 
     for n in 1..n_max + 1 {
         let r = {
-            let mut f = |x: &Rn<f64>, g: &mut Rn<f64>| wave_energy(x, &u_n, &u_n_1, g, h, kappa);
+            let mut f = |x: &Rn<f64>, g: &mut Rn<f64>| wave_energy_conservative(x, &u_n, &u_n_1, g, h, kappa);
             ncg.minimize(&u_n, &mut f)
         };
 

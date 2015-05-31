@@ -75,12 +75,20 @@ impl<F: Float> Secant2<F> {
     /// Find an approximate minimum satisfying the Wolfe condition of a given function.
     ///
     /// The search interval is `(0, c)`.
-    pub fn find_wolfe<Func>(&self, c: F, f: &mut Func) -> Result<F, Secant2Error>
+    /// `hint` may contain the value `(f(0), f'(0))` to avoid unnecessary evalution if
+    /// this value is already known (as is the case of the `NonlinearCG` minimization method).
+    pub fn find_wolfe<Func>(&self, c: F,
+                            f: &mut Func,
+                            hint: Option<(F, F)>) -> Result<F, Secant2Error>
         where Func: FnMut(F) -> (F, F) {
         assert!(c > F::zero());
 
         // save origin
-        let o = triple(f, F::zero());
+        let o = match hint {
+            Some((v, d)) => (F::zero(), v, d),
+            None => triple(f, F::zero()),
+        };
+
         // ϕ(0) + ε_k
         let fi = o.1 + self.epsilon;
         // bracket starting interval
@@ -229,6 +237,7 @@ fn secant<F: Float>(a: (F, F, F), b: (F, F, F)) -> F {
 /// Implementation of a Nonlinear Conjugate Gradient method.
 #[derive(Debug,Clone,Copy)]
 pub struct NonlinearCG<F: Float> {
+    method: NonlinearCGMethod<F>,
     line_method: Secant2<F>,
     alpha0: F,
     psi2: F,
@@ -237,14 +246,23 @@ pub struct NonlinearCG<F: Float> {
 }
 
 #[derive(Debug,Clone,Copy)]
+pub enum NonlinearCGMethod<F> {
+    SteepestDescent,
+    /// `CG_DESCENT` method from [HZ'06] with `eta` parameter
+    HagerZhang(F),
+}
+
+#[derive(Debug,Clone,Copy)]
 pub enum NonlinearCGError {
     LineMethodError(Secant2Error),
     MaxIterReached(i32),
 }
 
+// Defaults for f64 type: values mostly based on [HZ'06]
 impl NonlinearCG<f64> {
     pub fn new() -> Self {
         NonlinearCG {
+            method: NonlinearCGMethod::HagerZhang(0.01),
             line_method: f64::secant2_default(),
             alpha0: 1.,
             psi2: 2.,
@@ -263,45 +281,72 @@ impl<F: Float> NonlinearCG<F> {
     pub fn minimize<Func, V>(&self, x0: &V, f: &mut Func) -> Result<V, NonlinearCGError>
         where Func: FnMut(&V, &mut V) -> F,
               V : Lin<F=F> + Clone {
+        // allocate storage
         let mut x = x0.clone();
-        let mut grad = x0.clone();
-        let mut dir = x0.origin();
+        let mut g_k_1 = x0.clone();
+        let mut g_k = x0.clone();
+        let mut d_k;
+        let mut d_k_1 = x0.origin();
         let mut x_temp = x0.clone();
         let mut grad_temp = x0.clone();
+        let mut y = x0.clone();
 
         let mut alpha = self.alpha0;
 
-        for _ in 0..self.max_iter {
+        for k in 0..self.max_iter {
+            // move from previous iteration (swap by moving)
+            g_k = { let t = g_k_1; g_k_1 = g_k; t };
+            d_k = d_k_1;
             // compute gradient
-            f(&x, &mut grad);
+            let fx = f(&x, &mut g_k_1);
 
             // test gradient
-            if grad.norm() < self.grad_norm_tol {
+            if g_k_1.norm() < self.grad_norm_tol {
                 return Ok(x);
             }
 
+
             // compute new direction
-            let beta = V::F::zero(); // steepest descent
-            dir.combine(beta, &grad, -V::F::one());
+            let beta = if k == 0 {
+                V::F::zero()
+            } else {
+                match self.method {
+                    NonlinearCGMethod::SteepestDescent => V::F::zero(),
+                    NonlinearCGMethod::HagerZhang(eta) => {
+                        // g_{k+1} - g_k
+                        y.clone_from(&g_k_1);
+                        y.ray_to(&g_k, -V::F::one());
+                        let dk_yk = d_k.dot(&y);
+                        let two = V::F::one() + V::F::one();
+                        let betan_k = (y.dot(&g_k_1)
+                                       - two * d_k.dot(&g_k_1) * y.norm() / dk_yk) / dk_yk;
+                        let eta_k = -V::F::one() / (d_k.norm() * eta.min(g_k.norm()));
+                        betan_k.max(eta_k)
+                    },
+                }
+            };
+
+            // compute new direction
+            d_k_1 = { d_k.combine(beta, &g_k_1, -V::F::one()); d_k };
 
             // minimize along the ray
-            let r;
-            {
+            let r = {
                 let mut f_line = |t| {
                     x_temp.clone_from(&x);
-                    x_temp.ray_to(&dir, t);
+                    x_temp.ray_to(&d_k_1, t);
                     let v = f(&x_temp, &mut grad_temp);
-                    (v, grad_temp.dot(&dir))
+                    (v, grad_temp.dot(&d_k_1))
                 };
-                r = self.line_method.find_wolfe(self.psi2 * alpha, &mut f_line);
-            }
+                self.line_method.find_wolfe(self.psi2 * alpha, &mut f_line,
+                                               Some((fx, g_k_1.dot(&d_k_1))))
+            };
             match r {
                 Ok(t) => alpha = t,
                 Err(e) => return Err(NonlinearCGError::LineMethodError(e)),
             }
 
             // update position
-            x.ray_to(&dir, alpha);
+            x.ray_to(&d_k_1, alpha);
         }
 
         return Err(NonlinearCGError::MaxIterReached(self.max_iter));

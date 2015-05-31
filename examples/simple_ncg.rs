@@ -1,6 +1,6 @@
 extern crate linear_space;
 
-use linear_space::lin::{Rn,Lin};
+use linear_space::lin::{Rn};
 use linear_space::ncg::{NonlinearCG};
 
 fn quad2d(x: &Rn<f64>, grad: &mut Rn<f64>) -> f64 {
@@ -12,7 +12,6 @@ fn quad2d(x: &Rn<f64>, grad: &mut Rn<f64>) -> f64 {
 
     x[0].powi(2) + 10. * x[1].powi(2)
 }
-
 
 fn main() {
     let m = NonlinearCG::new();
@@ -37,8 +36,7 @@ fn main() {
         m.minimize(&x0, &mut f)
     };
 
-    println!("f(x) = x^2");
+    println!("f(x) = x1^2 + 10 x2^2");
     println!("\tNCG result: {:?}", r);
     println!("\tEvaluations: x = {:?}", ev);
-
 }

@@ -189,6 +189,8 @@ impl<F: Float> Lin for Rn<F> {
     }
 }
 
+// Trivial implementation of `Lin` for any `num::Float` as an element of a
+// linear space over scalars `num::Float`.
 impl<F: Float> Lin for F {
     type F = F;
 
@@ -232,6 +234,7 @@ mod test {
     use super::Rn;
     use std::cmp::min;
     use num::Float;
+    use self::quickcheck::quickcheck;
 
     // relative error: this shouldn't be to small
     const EPS: f64 = 1e-10;
@@ -260,7 +263,7 @@ mod test {
 
         }
 
-        quickcheck::quickcheck(prop as fn(f64, f64, f64) -> bool);
+        quickcheck(prop as fn(f64, f64, f64) -> bool);
         let mut a = 1.;
         a.combine(2.,&3.,4.);
         assert_eq!(a.norm(), 1. * 2. + 3. * 4.);
@@ -272,7 +275,7 @@ mod test {
             let mut v = Rn::new(v);
             eps_eq(0., v.scale(0.).norm())
         }
-        quickcheck::quickcheck(prop as fn(Vec<f64>) -> bool);
+        quickcheck(prop as fn(Vec<f64>) -> bool);
     }
 
     #[test]
@@ -281,7 +284,7 @@ mod test {
             let v = Rn::new(v);
             eps_eq(v.dot(&v), v.norm().powi(2))
         }
-        quickcheck::quickcheck(prop as fn(Vec<f64>) -> bool);
+        quickcheck(prop as fn(Vec<f64>) -> bool);
     }
 
     #[test]
@@ -291,7 +294,7 @@ mod test {
             let o = v.origin();
             eps_eq(o.norm(), 0.) && o.len() == v.len()
         }
-        quickcheck::quickcheck(prop as fn(Vec<f64>) -> bool);
+        quickcheck(prop as fn(Vec<f64>) -> bool);
     }
 
     #[test]
@@ -304,7 +307,7 @@ mod test {
 
             eps_eq(d, v.norm())
         }
-        quickcheck::quickcheck(prop as fn(Vec<f64>, Vec<f64>) -> bool);
+        quickcheck(prop as fn(Vec<f64>, Vec<f64>) -> bool);
     }
 
     #[test]
@@ -318,7 +321,7 @@ mod test {
 
             eps_eq(v.dist(&v1), 0.)
         }
-        quickcheck::quickcheck(prop as fn(Vec<f64>, Vec<f64>, f64) -> bool);
+        quickcheck(prop as fn(Vec<f64>, Vec<f64>, f64) -> bool);
     }
 
     #[test]
@@ -342,7 +345,7 @@ mod test {
             let dvw = v.dot(&z);
             eps_eq(a * dv + b * dw, dvw)
         }
-        quickcheck::quickcheck(prop as fn(Vec<f64>, Vec<f64>, Vec<f64>, f64) -> bool);
+        quickcheck(prop as fn(Vec<f64>, Vec<f64>, Vec<f64>, f64) -> bool);
     }
 
     #[test]
@@ -357,7 +360,7 @@ mod test {
             perp.project_ortho(&w);
             eps_eq(p.norm_squared() + perp.norm_squared(), v.norm_squared())
         }
-        quickcheck::quickcheck(prop as fn(Vec<f64>, Vec<f64>) -> bool);
+        quickcheck(prop as fn(Vec<f64>, Vec<f64>) -> bool);
     }
 
 }

@@ -143,10 +143,6 @@ impl<F: Float> Add for Rn<F> {
 impl<F: Float> Lin for Rn<F> {
     type F = F;
 
-    fn norm(&self) -> Self::F {
-        self.dot(self).sqrt()
-    }
-
     fn dist(&self, other: &Self) -> Self::F {
         assert_eq!(self.len(), other.len());
         self.iter().zip(other.iter())

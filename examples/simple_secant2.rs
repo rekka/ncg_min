@@ -8,7 +8,7 @@ fn secant2_with_tracking<Func>(m: &Secant2<f64>, c: f64, f: &Func) where Func: F
     let r;
     {
         let mut g = |x| {ev.push(x); f(x)};
-        r = m.find_wolfe(c, &mut g);
+        r = m.find_wolfe(c, &mut g, None);
     }
 
     println!("Found point {:?}", r);

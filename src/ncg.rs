@@ -366,7 +366,7 @@ mod test {
             (x * (x - 1.), 2. * x - 1.)
         }
 
-        let r = s.find_wolfe(5., &mut f);
+        let r = s.find_wolfe(5., &mut f, None);
 
         assert!(r.is_ok());
     }
@@ -380,7 +380,7 @@ mod test {
                 (x - 0.1) * (x - 1.) * (x - 1.02))
         }
 
-        let r = s.find_wolfe(1.025, &mut f);
+        let r = s.find_wolfe(1.025, &mut f, None);
 
         assert!(r.is_ok());
     }
@@ -394,7 +394,7 @@ mod test {
             ((1. + 2. * t).powi(2), -4. * (1. + 2. * t))
         }
 
-        let r = s.find_wolfe(1., &mut f);
+        let r = s.find_wolfe(1., &mut f, None);
 
         match r {
             Err(Secant2Error::InitBracketMaxIterReached(_)) => (),

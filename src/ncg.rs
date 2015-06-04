@@ -1,4 +1,4 @@
-//! Implementation of a Nonlinear Conjugate Gradient method.
+//! Implementation of a nonlinear conjugate gradient method.
 
 use num::{Float, Zero, One};
 use lin::{Lin};
@@ -6,14 +6,24 @@ use lin::{Lin};
 /// Implementation of `secant2` method by _Hager & Zhang'06_.
 #[derive(Debug,Clone)]
 pub struct Secant2<F: Float> {
-    delta: F,
-    sigma: F,
-    epsilon: F,
-    theta: F,
-    rho: F,
-    max_iter: i32,
-    ubracket_max_iter: i32,
-    init_bracket_max_iter: i32,
+    /// `delta` for Wolfe condition
+    pub delta: F,
+    /// `sigma` for Wolfe condition
+    pub sigma: F,
+    /// `epsilon` for approximate Wolfe condition (to allow for value function to increase
+    /// because of rounding of errors when close to the minimum)
+    pub epsilon: F,
+    /// Bisection coefficient when secant fails; allowed values in `(0, 1)`
+    /// (`0.5` is the midpoint of the interval)
+    pub theta: F,
+    /// Extension factor for finding the initial bracketing interval; `> 1`
+    pub rho: F,
+    /// Maximum number of iterations
+    pub max_iter: i32,
+    /// Maximum number of U3a--b bracketing iterations
+    pub ubracket_max_iter: i32,
+    /// Maximum number of initial bracketing iterations
+    pub init_bracket_max_iter: i32,
 }
 
 #[derive(Debug,Clone)]
@@ -234,19 +244,27 @@ fn secant<F: Float>(a: (F, F, F), b: (F, F, F)) -> F {
     (a.0 * b.2 - b.0 * a.2) / (b.2 - a.2)
 }
 
-/// Implementation of a Nonlinear Conjugate Gradient method.
+/// Implementation of a nonlinear conjugate gradient method.
 #[derive(Debug,Clone)]
 pub struct NonlinearCG<F: Float> {
-    method: NonlinearCGMethod<F>,
-    line_method: Secant2<F>,
-    alpha0: F,
-    psi2: F,
-    grad_norm_tol: F,
-    max_iter: i32,
+    /// Nonlinear CG method
+    pub method: NonlinearCGMethod<F>,
+    /// Parameters for line minimization `secant2` method
+    pub line_method: Secant2<F>,
+    /// Initial line minimization bracketing interval: `[0, alpha0]`
+    pub alpha0: F,
+    /// Multiplier for initial line minimization bracketing interval: `[0, psi2 * alpha]`,
+    /// where `alpha` was obtained in previous iteration.
+    pub psi2: F,
+    /// Desired norm of the gradient
+    pub grad_norm_tol: F,
+    /// Maximum number of iterations to take
+    pub max_iter: i32,
 }
 
 #[derive(Debug,Clone)]
 pub enum NonlinearCGMethod<F> {
+    /// Naive method of steepest descent
     SteepestDescent,
     /// `CG_DESCENT` method from [HZ'06] with `eta` parameter
     HagerZhang(F),
@@ -275,8 +293,22 @@ pub struct NonlinearCGIteration<F> {
     pub line_eval_count: i32,
 }
 
-// Defaults for f64 type: values mostly based on [HZ'06]
+impl NonlinearCG<f32> {
+    /// Defaults for `f32` type: values mostly based on [HZ'06]
+    pub fn new() -> Self {
+        NonlinearCG {
+            method: NonlinearCGMethod::HagerZhang(0.01),
+            line_method: f32::secant2_default(),
+            alpha0: 1.,
+            psi2: 2.,
+            grad_norm_tol: 1e-3,
+            max_iter: 100,
+        }
+    }
+}
+
 impl NonlinearCG<f64> {
+    /// Defaults for `f64` type: values mostly based on [HZ'06]
     pub fn new() -> Self {
         NonlinearCG {
             method: NonlinearCGMethod::HagerZhang(0.01),
@@ -331,6 +363,7 @@ impl<F: Float> NonlinearCG<F> {
             g_k = { let t = g_k_1; g_k_1 = g_k; t };
             d_k = d_k_1;
             // compute gradient
+            // TODO: use the last evaluation in the line minimization to save this call
             let fx = f(&x, &mut g_k_1);
 
             // test gradient

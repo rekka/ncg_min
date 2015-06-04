@@ -185,42 +185,61 @@ impl<F: Float> Lin for Rn<F> {
     }
 }
 
-// Trivial implementation of `Lin` for any `num::Float` as an element of a
-// linear space over scalars `num::Float`.
-impl<F: Float> Lin for F {
-    type F = F;
+// Trivial implementation of `Lin` for `f32` and `f64 as an element of a
+// linear space over scalars of the same type.
+// This cannot be done directly using
+//
+// ```
+// impl<F: Float> Lin for F {
+// ...
+// ```
+//
+// since I am hitting
+//
+// ```
+// error: conflicting implementations for trait `Lin` [E0119]
+// ```
+macro_rules! lin_float_impl {
+    ($T:ident) => (
+        impl Lin for $T {
+            type F = $T;
 
-    fn dot(&self, other: &Self) -> Self::F {
-        *self * *other
-    }
+            fn dot(&self, other: &Self) -> Self::F {
+                *self * *other
+            }
 
-    fn scale(&mut self, a: Self::F) -> &mut Self {
-        *self = *self * a;
-        self
-    }
+            fn scale(&mut self, a: Self::F) -> &mut Self {
+                *self = *self * a;
+                self
+            }
 
-    fn combine(&mut self,  a: Self::F, other: &Self, b: Self::F) -> &mut Self {
-        *self = *self * a + *other * b;
-        self
-    }
+            fn combine(&mut self,  a: Self::F, other: &Self, b: Self::F) -> &mut Self {
+                *self = *self * a + *other * b;
+                self
+            }
 
-    fn ray_to(&mut self,  other: &Self, b: Self::F) -> &mut Self {
-        *self = *self + *other * b;
-        self
-    }
+            fn ray_to(&mut self,  other: &Self, b: Self::F) -> &mut Self {
+                *self = *self + *other * b;
+                self
+            }
 
-    fn origin(&self) -> Self {
-        F::zero()
-    }
+            fn origin(&self) -> Self {
+                Self::F::zero()
+            }
 
-    fn dist(&self, other: &Self) -> Self::F {
-        (*self - *other).abs()
-    }
+            fn dist(&self, other: &Self) -> Self::F {
+                (*self - *other).abs()
+            }
 
-    fn norm(&self) -> Self::F {
-        self.abs()
-    }
+            fn norm(&self) -> Self::F {
+                self.abs()
+            }
+        }
+    )
 }
+
+lin_float_impl!(f32);
+lin_float_impl!(f64);
 
 #[cfg(test)]
 mod test {

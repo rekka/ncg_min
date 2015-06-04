@@ -30,13 +30,16 @@ fn main() {
 
     let mut ev: Vec<Rn<f64>> = vec![];
 
+    println!("f(x) = x1^2 + 10 x2^2");
+
     let r = {
         let mut f = |x: &Rn<f64>, grad: &mut Rn<f64>| {ev.push(x.clone()); quad2d(x, grad)};
         let x0 = Rn::new(vec![1.,1.]);
-        m.minimize(&x0, &mut f)
+        m.minimize_with_trace(&x0, &mut f, &mut |x, info| {
+            println!("{:?}, {:?}", x, info);
+        })
     };
 
-    println!("f(x) = x1^2 + 10 x2^2");
     println!("\tNCG result: {:?}", r);
     println!("\tEvaluations: x = {:?}", ev);
 }

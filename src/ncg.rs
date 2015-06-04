@@ -4,7 +4,7 @@ use num::{Float, Zero, One};
 use lin::{Lin};
 
 /// Implementation of `secant2` method by _Hager & Zhang'06_.
-#[derive(Debug,Clone,Copy)]
+#[derive(Debug,Clone)]
 pub struct Secant2<F: Float> {
     delta: F,
     sigma: F,
@@ -16,7 +16,7 @@ pub struct Secant2<F: Float> {
     init_bracket_max_iter: i32,
 }
 
-#[derive(Debug,Clone,Copy)]
+#[derive(Debug,Clone)]
 pub enum Secant2Error {
     MaxIterReached(i32),
     InitBracketMaxIterReached(i32),
@@ -235,7 +235,7 @@ fn secant<F: Float>(a: (F, F, F), b: (F, F, F)) -> F {
 }
 
 /// Implementation of a Nonlinear Conjugate Gradient method.
-#[derive(Debug,Clone,Copy)]
+#[derive(Debug,Clone)]
 pub struct NonlinearCG<F: Float> {
     method: NonlinearCGMethod<F>,
     line_method: Secant2<F>,
@@ -245,17 +245,34 @@ pub struct NonlinearCG<F: Float> {
     max_iter: i32,
 }
 
-#[derive(Debug,Clone,Copy)]
+#[derive(Debug,Clone)]
 pub enum NonlinearCGMethod<F> {
     SteepestDescent,
     /// `CG_DESCENT` method from [HZ'06] with `eta` parameter
     HagerZhang(F),
 }
 
-#[derive(Debug,Clone,Copy)]
+#[derive(Debug,Clone)]
 pub enum NonlinearCGError {
     LineMethodError(Secant2Error),
     MaxIterReached(i32),
+}
+
+/// Information concerning each iteration of the nonlinear CG method
+#[derive(Debug,Clone)]
+pub struct NonlinearCGIteration<F> {
+    /// Iteration number (indexed from 0)
+    pub k: i32,
+    /// Gradient norm at the beginning of the iteration
+    pub grad_norm: F,
+    /// Function value at the beginning of the iteration
+    pub value: F,
+    /// `beta` coefficient for the nonlinear CG search direction update
+    pub beta: F,
+    /// Line minimization result
+    pub alpha: F,
+    /// Number of function evaluations by the line minimization method
+    pub line_eval_count: i32,
 }
 
 // Defaults for f64 type: values mostly based on [HZ'06]
@@ -278,9 +295,25 @@ impl<F: Float> NonlinearCG<F> {
     /// The function `f` must provide its value as well as its gradient,
     /// returned in the provided `&mut V` (to avoid allocation).
     /// `x0` is used as the initial guess.
-    pub fn minimize<Func, V>(&self, x0: &V, f: &mut Func) -> Result<V, NonlinearCGError>
+    pub fn minimize<Func, V>(&self,
+                                       x0: &V,
+                                       f: &mut Func) -> Result<V, NonlinearCGError>
         where Func: FnMut(&V, &mut V) -> F,
               V : Lin<F=F> + Clone {
+        self.minimize_with_trace(x0, f, &mut |_, _| {})
+    }
+
+    /// The same as `minimize`, but allows to pass in a callback function that
+    /// is called after every iteration.
+    /// It is provided with the new point after the iteration is finished,
+    /// and with additional information about the performed iteration.
+    pub fn minimize_with_trace<Func, V, Callback>(&self,
+                                       x0: &V,
+                                       f: &mut Func,
+                                       callback: &mut Callback) -> Result<V, NonlinearCGError>
+        where Func: FnMut(&V, &mut V) -> F,
+              V : Lin<F=F> + Clone,
+              Callback: FnMut(&V, NonlinearCGIteration<V::F>) {
         // allocate storage
         let mut x = x0.clone();
         let mut g_k_1 = x0.clone();
@@ -301,7 +334,8 @@ impl<F: Float> NonlinearCG<F> {
             let fx = f(&x, &mut g_k_1);
 
             // test gradient
-            if g_k_1.norm() < self.grad_norm_tol {
+            let grad_norm = g_k_1.norm();
+            if grad_norm < self.grad_norm_tol {
                 return Ok(x);
             }
 
@@ -330,8 +364,10 @@ impl<F: Float> NonlinearCG<F> {
             d_k_1 = { d_k.combine(beta, &g_k_1, -V::F::one()); d_k };
 
             // minimize along the ray
+            let mut line_eval_count = 0;
             let r = {
                 let mut f_line = |t| {
+                    line_eval_count += 1;
                     x_temp.clone_from(&x);
                     x_temp.ray_to(&d_k_1, t);
                     let v = f(&x_temp, &mut grad_temp);
@@ -347,6 +383,15 @@ impl<F: Float> NonlinearCG<F> {
 
             // update position
             x.ray_to(&d_k_1, alpha);
+
+            callback(&x, NonlinearCGIteration {
+                k: k,
+                beta: beta,
+                grad_norm: grad_norm,
+                value: fx,
+                alpha: alpha,
+                line_eval_count: line_eval_count,
+            });
         }
 
         return Err(NonlinearCGError::MaxIterReached(self.max_iter));

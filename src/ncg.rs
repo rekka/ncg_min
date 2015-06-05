@@ -125,7 +125,7 @@ impl<F: Float> Secant2<F> {
             let c = triple(f, cx);
             if self.wolfe(c, fi, o.2) { return Ok(c.0); }
 
-            let cx;
+            let mut cx;
             if c.2 >= F::zero() {
                 cx = secant(b, c);
                 ab.1 = c;
@@ -143,22 +143,28 @@ impl<F: Float> Secant2<F> {
                 continue;
             }
             let (a, b) = ab;
-            if a.0 < cx && cx < b.0 {
-                let c = triple(f, cx);
-                if self.wolfe(c, fi, o.2) { return Ok(c.0); }
 
-                if c.2 >= F::zero() {
-                    ab.1 = c;
-                } else if c.1 <= fi {
-                    ab.0 = c;
-                } else {
-                    ab = match self.ubracket(a, c, f, fi) {
-                        BracketResult::Ok(a, b) => (a, b),
-                        // BracketResult::Wolfe(x) => return Ok(x),
-                        BracketResult::MaxIterReached(n) =>
-                            return Err(Secant2Error::UBracketMaxIterReached(n)),
-                    };
-                }
+            if cx <= a.0 || b.0 <= cx {
+                // here we diverge from `secant2` method: if the second secant
+                // produces a point outside of the bracket interval, let's bisect
+                // TODO: this should be maybe handled as in Brent's method
+                cx = a.0 + self.theta * (b.0 - a.0);
+            }
+
+            let c = triple(f, cx);
+            if self.wolfe(c, fi, o.2) { return Ok(c.0); }
+
+            if c.2 >= F::zero() {
+                ab.1 = c;
+            } else if c.1 <= fi {
+                ab.0 = c;
+            } else {
+                ab = match self.ubracket(a, c, f, fi) {
+                    BracketResult::Ok(a, b) => (a, b),
+                    // BracketResult::Wolfe(x) => return Ok(x),
+                    BracketResult::MaxIterReached(n) =>
+                        return Err(Secant2Error::UBracketMaxIterReached(n)),
+                };
             }
 
         }
@@ -271,8 +277,9 @@ pub enum NonlinearCGMethod<F> {
 }
 
 #[derive(Debug,Clone)]
-pub enum NonlinearCGError {
-    LineMethodError(Secant2Error),
+pub enum NonlinearCGError<V> {
+    /// `secant2` method failed to converge; returns current point and search direction.
+    LineMethodError(V, V, Secant2Error),
     MaxIterReached(i32),
 }
 
@@ -329,7 +336,7 @@ impl<F: Float> NonlinearCG<F> {
     /// `x0` is used as the initial guess.
     pub fn minimize<Func, V>(&self,
                                        x0: &V,
-                                       f: &mut Func) -> Result<V, NonlinearCGError>
+                                       f: &mut Func) -> Result<V, NonlinearCGError<V>>
         where Func: FnMut(&V, &mut V) -> F,
               V : Lin<F=F> + Clone {
         self.minimize_with_trace(x0, f, &mut |_, _| {})
@@ -342,7 +349,7 @@ impl<F: Float> NonlinearCG<F> {
     pub fn minimize_with_trace<Func, V, Callback>(&self,
                                        x0: &V,
                                        f: &mut Func,
-                                       callback: &mut Callback) -> Result<V, NonlinearCGError>
+                                       callback: &mut Callback) -> Result<V, NonlinearCGError<V>>
         where Func: FnMut(&V, &mut V) -> F,
               V : Lin<F=F> + Clone,
               Callback: FnMut(&V, NonlinearCGIteration<V::F>) {
@@ -412,7 +419,7 @@ impl<F: Float> NonlinearCG<F> {
             };
             match r {
                 Ok(t) => alpha = t,
-                Err(e) => return Err(NonlinearCGError::LineMethodError(e)),
+                Err(e) => return Err(NonlinearCGError::LineMethodError(x, d_k_1, e)),
             }
 
             // update position

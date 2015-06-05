@@ -386,7 +386,7 @@ impl<F: Float> NonlinearCG<F> {
                         let dk_yk = d_k.dot(&y);
                         let two = V::F::one() + V::F::one();
                         let betan_k = (y.dot(&g_k_1)
-                                       - two * d_k.dot(&g_k_1) * y.norm() / dk_yk) / dk_yk;
+                                       - two * d_k.dot(&g_k_1) * y.norm_squared() / dk_yk) / dk_yk;
                         let eta_k = -V::F::one() / (d_k.norm() * eta.min(g_k.norm()));
                         betan_k.max(eta_k)
                     },
@@ -395,6 +395,7 @@ impl<F: Float> NonlinearCG<F> {
 
             // compute new direction
             d_k_1 = { d_k.combine(beta, &g_k_1, -V::F::one()); d_k };
+            assert!(d_k_1.dot(&g_k_1) < V::F::zero());
 
             // minimize along the ray
             let mut line_eval_count = 0;

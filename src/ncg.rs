@@ -487,4 +487,23 @@ mod test {
             _ => panic!("unexpected result: {:?}", r),
         }
     }
+
+    // This example breaks the original `secant2` method.
+    // A solution is to perform a bisection.
+    #[test]
+    fn not_good_for_secant() {
+        let s = Secant2::new();
+
+        fn f(t: f64) -> (f64, f64) {
+            let a = 0.001;
+            let x  = t - 1.;
+            let s = (a * a + x * x).sqrt();
+            (0.5 * (x * (s + x) - a * a * (s + x).ln()),
+                x * x / s + x)
+        }
+
+        let r = s.find_wolfe(2., &mut f, None);
+
+        assert!(r.is_ok());
+    }
 }

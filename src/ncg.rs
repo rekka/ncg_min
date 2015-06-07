@@ -82,27 +82,31 @@ enum BracketResult<F> {
 }
 
 impl<F: Float> Secant2<F> {
-    /// Find an approximate minimum satisfying the Wolfe condition of a given function.
+    /// Find an approximate minimum of a function _ϕ_ satisfying the Wolfe condition.
     ///
-    /// The search interval is `(0, c)`.
-    /// `hint` may contain the value `(f(0), f'(0))` to avoid unnecessary evalution if
-    /// this value is already known (as is the case of the `NonlinearCG` minimization method).
-    pub fn find_wolfe<Func>(&self, c: F,
-                            f: &mut Func,
+    ///   - `f` should be the function `f = |x| (ϕ(x), ϕ'(x))`.
+    ///   - `c` specifies the initial search interval `(0, c)`.
+    ///   - `hint` may contain the value `(ϕ(0), ϕ'(0))` to avoid unnecessary evalution if
+    ///     this value is already known (as is the case of the `NonlinearCG` minimization method).
+    pub fn find_wolfe<Func>(&self,
+                            c: F,
+                            mut f: Func,
                             hint: Option<(F, F)>) -> Result<F, Secant2Error>
         where Func: FnMut(F) -> (F, F) {
         assert!(c > F::zero());
 
+        let mut f = |x| { let (fx, fdx) = f(x); (x, fx, fdx) };
+
         // save origin
         let o = match hint {
             Some((v, d)) => (F::zero(), v, d),
-            None => triple(f, F::zero()),
+            None => f(F::zero()),
         };
 
-        // ϕ(0) + ε_k
-        let fi = o.1 + self.epsilon;
+        // ϕ(0) + ε
+        let f0_eps = o.1 + self.epsilon;
         // bracket starting interval
-        let mut ab = match self.bracket(o, triple(f, c), f) {
+        let mut ab = match self.bracket(o, f(c), &mut f) {
             BracketResult::Ok(a, b) => (a, b),
             // BracketResult::Wolfe(x) => return Ok(x),
             BracketResult::MaxIterReached(n) =>
@@ -116,24 +120,24 @@ impl<F: Float> Secant2<F> {
             // here we handle the case when b gets stuck at a local minimum of ϕ with
             // ϕ(b) > ϕ(0) + ε
             let ctheta = a.0 + self.theta * (b.0 - a.0);
-            if cx > ctheta && b.1 + (cx - b.0) * b.2 > fi {
+            if cx > ctheta && b.1 + (cx - b.0) * b.2 > f0_eps {
                 // Taylor series estimate tells us that phi(b) does not decrease enough
                 // => let's help it
                 cx = ctheta;
             }
 
-            let c = triple(f, cx);
-            if self.wolfe(c, fi, o.2) { return Ok(c.0); }
+            let c = f(cx);
+            if self.wolfe(c, f0_eps, o.2) { return Ok(c.0); }
 
             let mut cx;
             if c.2 >= F::zero() {
                 cx = secant(b, c);
                 ab.1 = c;
-            } else if c.1 <= fi {
+            } else if c.1 <= f0_eps {
                 cx = secant(a, c);
                 ab.0 = c;
             } else {
-                ab = match self.ubracket(a, c, f, fi) {
+                ab = match self.ubracket(a, c, &mut f, f0_eps) {
                     BracketResult::Ok(a, b) => (a, b),
                     // BracketResult::Wolfe(x) => return Ok(x),
                     BracketResult::MaxIterReached(n) =>
@@ -151,15 +155,15 @@ impl<F: Float> Secant2<F> {
                 cx = a.0 + self.theta * (b.0 - a.0);
             }
 
-            let c = triple(f, cx);
-            if self.wolfe(c, fi, o.2) { return Ok(c.0); }
+            let c = f(cx);
+            if self.wolfe(c, f0_eps, o.2) { return Ok(c.0); }
 
             if c.2 >= F::zero() {
                 ab.1 = c;
-            } else if c.1 <= fi {
+            } else if c.1 <= f0_eps {
                 ab.0 = c;
             } else {
-                ab = match self.ubracket(a, c, f, fi) {
+                ab = match self.ubracket(a, c, &mut f, f0_eps) {
                     BracketResult::Ok(a, b) => (a, b),
                     // BracketResult::Wolfe(x) => return Ok(x),
                     BracketResult::MaxIterReached(n) =>
@@ -175,26 +179,26 @@ impl<F: Float> Secant2<F> {
     //
     // The format of the triples is `(x, f(x), f'(x))`.
     //
-    // - `fi` is `\phi(0) + \epsilon_k`
+    // - `f0_eps` is `\phi(0) + \epsilon_k`
     fn ubracket<Func>(&self,
                       mut a: (F, F, F),
                       mut b: (F, F, F),
-                      f: &mut Func, fi: F) -> BracketResult<F>
-        where Func: FnMut(F) -> (F, F) {
+                      mut f: Func, f0_eps: F) -> BracketResult<F>
+        where Func: FnMut(F) -> (F, F, F) {
         // preconditions
         assert!(a.0 < b.0);
         assert!(a.2 < F::zero());
         assert!(b.2 < F::zero());
-        assert!(a.1 <= fi && fi < b.1);
+        assert!(a.1 <= f0_eps && f0_eps < b.1);
 
         for _ in 0..self.ubracket_max_iter {
             let cx = a.0 + self.theta * (b.0 - a.0);
-            let c = triple(f, cx);
+            let c = f(cx);
 
             if c.2 >= F::zero() {
                 return BracketResult::Ok(a, c);
             } else {
-                if c.1 <= fi {
+                if c.1 <= f0_eps {
                     a = c;
                 } else {
                     b = c;
@@ -209,41 +213,36 @@ impl<F: Float> Secant2<F> {
     fn bracket<Func>(&self,
                      mut a: (F, F, F),
                      mut b: (F, F, F),
-                     f: &mut Func) -> BracketResult<F>
-        where Func: FnMut(F) -> (F, F) {
+                     mut f: Func) -> BracketResult<F>
+        where Func: FnMut(F) -> (F, F, F) {
         // preconditions
         assert!(a.0 < b.0);
         assert!(a.2 < F::zero());
 
         let o = a;
-        let fi = o.1 + self.epsilon;
+        let f0_eps = o.1 + self.epsilon;
 
         for _ in 0..self.init_bracket_max_iter {
             if b.2 >= F::zero() {
                 return BracketResult::Ok(a, b);
-            } else if b.1 > fi {
-                return self.ubracket(o, b, f, fi);
+            } else if b.1 > f0_eps {
+                return self.ubracket(o, b, f, f0_eps);
             } else {
                 a = b;
                 let bx = self.rho * b.0;
-                b = triple(f, bx);
+                b = f(bx);
             }
         }
 
         BracketResult::MaxIterReached(self.init_bracket_max_iter)
     }
 
-    fn wolfe(&self, c: (F, F, F), fi: F, fd0: F) -> bool {
+    fn wolfe(&self, c: (F, F, F), f0_eps: F, fd0: F) -> bool {
         // approximate Wolfe condition
-        c.1 <= fi && self.sigma * fd0 <= c.2 && c.2 <= (self.delta + self.delta - F::one()) * fd0
+        // ϕ(x)≤ϕ(0)+ε && σϕ'(0)≤ϕ'(x)≤(2δ-1)ϕ'(0)
+        c.1 <= f0_eps && self.sigma * fd0 <= c.2 && c.2 <= (self.delta + self.delta - F::one()) * fd0
     }
 
-}
-
-fn triple<Func, F: Float>(f: &mut Func, x: F) -> (F, F, F)
-    where Func: FnMut(F) -> (F, F) {
-    let (fx, fdx) = f(x);
-    (x, fx, fdx)
 }
 
 fn secant<F: Float>(a: (F, F, F), b: (F, F, F)) -> F {
@@ -336,10 +335,10 @@ impl<F: Float> NonlinearCG<F> {
     /// `x0` is used as the initial guess.
     pub fn minimize<Func, V>(&self,
                                        x0: &V,
-                                       f: &mut Func) -> Result<V, NonlinearCGError<V>>
+                                       f: Func) -> Result<V, NonlinearCGError<V>>
         where Func: FnMut(&V, &mut V) -> F,
               V : Lin<F=F> + Clone {
-        self.minimize_with_trace(x0, f, &mut |_, _| {})
+        self.minimize_with_trace(x0, f, |_, _| {})
     }
 
     /// The same as `minimize`, but allows to pass in a callback function that
@@ -348,8 +347,8 @@ impl<F: Float> NonlinearCG<F> {
     /// and with additional information about the performed iteration.
     pub fn minimize_with_trace<Func, V, Callback>(&self,
                                        x0: &V,
-                                       f: &mut Func,
-                                       callback: &mut Callback) -> Result<V, NonlinearCGError<V>>
+                                       mut f: Func,
+                                       mut callback: Callback) -> Result<V, NonlinearCGError<V>>
         where Func: FnMut(&V, &mut V) -> F,
               V : Lin<F=F> + Clone,
               Callback: FnMut(&V, NonlinearCGIteration<V::F>) {
@@ -452,7 +451,7 @@ mod test {
             (x * (x - 1.), 2. * x - 1.)
         }
 
-        let r = s.find_wolfe(5., &mut f, None);
+        let r = s.find_wolfe(5., f, None);
 
         assert!(r.is_ok());
     }
@@ -466,7 +465,7 @@ mod test {
                 (x - 0.1) * (x - 1.) * (x - 1.02))
         }
 
-        let r = s.find_wolfe(1.025, &mut f, None);
+        let r = s.find_wolfe(1.025, f, None);
 
         assert!(r.is_ok());
     }
@@ -480,7 +479,7 @@ mod test {
             ((1. + 2. * t).powi(2), -4. * (1. + 2. * t))
         }
 
-        let r = s.find_wolfe(1., &mut f, None);
+        let r = s.find_wolfe(1., f, None);
 
         match r {
             Err(Secant2Error::InitBracketMaxIterReached(_)) => (),
@@ -502,7 +501,7 @@ mod test {
                 x * x / s + x)
         }
 
-        let r = s.find_wolfe(2., &mut f, None);
+        let r = s.find_wolfe(2., f, None);
 
         assert!(r.is_ok());
     }

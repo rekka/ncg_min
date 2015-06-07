@@ -19,8 +19,8 @@ fn main() {
     let mut ev: Vec<f64> = vec![];
 
     let r = {
-        let mut f = |x: &f64, grad: &mut f64| {ev.push(x.clone()); *grad = 2. * x; x * x};
-        m.minimize(&1f64, &mut f)
+        let f = |x: &f64, grad: &mut f64| {ev.push(x.clone()); *grad = 2. * x; x * x};
+        m.minimize(&1f64, f)
     };
 
     println!("f(x) = x^2");
@@ -33,9 +33,9 @@ fn main() {
     println!("f(x) = x1^2 + 10 x2^2");
 
     let r = {
-        let mut f = |x: &Rn<f64>, grad: &mut Rn<f64>| {ev.push(x.clone()); quad2d(x, grad)};
+        let f = |x: &Rn<f64>, grad: &mut Rn<f64>| {ev.push(x.clone()); quad2d(x, grad)};
         let x0 = Rn::new(vec![1.,1.]);
-        m.minimize_with_trace(&x0, &mut f, &mut |x, info| {
+        m.minimize_with_trace(&x0, f, |x, info| {
             println!("{:?}, {:?}", x, info);
         })
     };

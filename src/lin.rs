@@ -11,6 +11,7 @@
 //!
 //! assert_eq!(x.dot(&y), -4.);
 //! assert_eq!(Rn::new(vec![3., -1.]), x.clone() + &y);
+//! assert_eq!(Rn::new(vec![-1., 5.]), x.clone() - y);
 //! assert_eq!(Rn::new(vec![2., 4.]), x * 2.);
 //! ```
 use num::{Zero, One, Float};
@@ -97,6 +98,7 @@ pub trait Lin {
 
 pub trait Dot {
     type F: Float;
+
     /// Dot product (inner product).
     fn dot(&self, other: &Self) -> Self::F;
 
@@ -161,10 +163,11 @@ impl<F: Float> Div<F> for Rn<F> {
     }
 }
 
-impl<'a, F: Float> Add<&'a Rn<F>> for Rn<F> {
+impl<F: Float, T> Add<T> for Rn<F> where T: Borrow<Rn<F>> {
     type Output = Rn<F>;
 
-    fn add(mut self, other: &Self) -> Self {
+    fn add(mut self, other: T) -> Self {
+        let other = other.borrow();
         assert_eq!(self.len(), other.len());
         for (x, y) in self.iter_mut().zip(other.iter()) {
             *x = *x + *y;
@@ -173,10 +176,11 @@ impl<'a, F: Float> Add<&'a Rn<F>> for Rn<F> {
     }
 }
 
-impl<'a, F: Float> Sub<&'a Rn<F>> for Rn<F> {
+impl<F: Float, T> Sub<T> for Rn<F> where T: Borrow<Rn<F>> {
     type Output = Rn<F>;
 
-    fn sub(mut self, other: &Self) -> Self {
+    fn sub(mut self, other: T) -> Self {
+        let other = other.borrow();
         assert_eq!(self.len(), other.len());
         for (x, y) in self.iter_mut().zip(other.iter()) {
             *x = *x - *y;

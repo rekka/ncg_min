@@ -10,11 +10,12 @@
 //! let y = Rn::new(vec![2.,-3.]);
 //!
 //! assert_eq!(x.dot(&y), -4.);
-//! assert_eq!(Rn::new(vec![3., -1.]), x.clone() + y);
+//! assert_eq!(Rn::new(vec![3., -1.]), x.clone() + &y);
 //! assert_eq!(Rn::new(vec![2., 4.]), x * 2.);
 //! ```
 use num::{Zero, One, Float};
-use std::ops::{Add, Mul, Deref, DerefMut};
+use std::borrow::Borrow;
+use std::ops::{Add, Mul, Sub, Div, Deref, DerefMut};
 use std::iter::repeat;
 
 
@@ -94,6 +95,22 @@ pub trait Lin {
     }
 }
 
+pub trait Dot {
+    type F: Float;
+    /// Dot product (inner product).
+    fn dot(&self, other: &Self) -> Self::F;
+
+    /// Norm of the vector.
+    fn norm(&self) -> Self::F {
+        self.norm_squared().sqrt()
+    }
+
+    /// Square of the norm.
+    fn norm_squared(&self) -> Self::F {
+        self.dot(self)
+    }
+}
+
 /// An implementation of the Lin trait: an n-dimensional real vector.
 ///
 /// Backed by a `Vec<F>`, where `F` is `Float`.
@@ -126,17 +143,55 @@ impl<F: Float> Mul<F> for Rn<F> {
     type Output = Rn<F>;
 
     fn mul(mut self, other: F) -> Self {
-        self.scale(other);
+        for x in self.iter_mut() {
+            *x = *x * other;
+        }
         self
     }
 }
 
-impl<F: Float> Add for Rn<F> {
+impl<F: Float> Div<F> for Rn<F> {
     type Output = Rn<F>;
 
-    fn add(mut self, other: Self) -> Self {
-        self.add_mut(&other);
+    fn div(mut self, other: F) -> Self {
+        for x in self.iter_mut() {
+            *x = *x / other;
+        }
         self
+    }
+}
+
+impl<'a, F: Float> Add<&'a Rn<F>> for Rn<F> {
+    type Output = Rn<F>;
+
+    fn add(mut self, other: &Self) -> Self {
+        assert_eq!(self.len(), other.len());
+        for (x, y) in self.iter_mut().zip(other.iter()) {
+            *x = *x + *y;
+        }
+        self
+    }
+}
+
+impl<'a, F: Float> Sub<&'a Rn<F>> for Rn<F> {
+    type Output = Rn<F>;
+
+    fn sub(mut self, other: &Self) -> Self {
+        assert_eq!(self.len(), other.len());
+        for (x, y) in self.iter_mut().zip(other.iter()) {
+            *x = *x - *y;
+        }
+        self
+    }
+}
+
+impl<F: Float> Dot for Rn<F> {
+    type F = F;
+
+    fn dot(&self, other: &Self) -> Self::F {
+        assert_eq!(self.len(), other.len());
+        self.iter().zip(other.iter())
+            .fold(Self::F::zero(), |sum, (&x, &y)| sum + x * y)
     }
 }
 

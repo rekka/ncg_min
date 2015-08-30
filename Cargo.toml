@@ -1,5 +1,5 @@
 [package]
-name = "linear_space"
+name = "ncg_min"
 version = "0.1.0"
 authors = ["Norbert Pozar <bertapozar@gmail.com>"]
 

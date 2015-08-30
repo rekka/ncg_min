@@ -3,7 +3,7 @@
 use num::{Float, Zero, One};
 use lin::{Lin};
 
-/// Implementation of `secant2` method by _Hager & Zhang'06_.
+/// Implementation of the `secant2` line minimization method by _Hager & Zhang'06_.
 #[derive(Debug,Clone)]
 pub struct Secant2<S: Float> {
     /// `delta` for Wolfe condition

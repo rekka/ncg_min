@@ -1,6 +1,6 @@
-extern crate linear_space;
+extern crate ncg_min;
 
-use linear_space::ncg::{Secant2};
+use ncg_min::{Secant2};
 
 fn secant2_with_tracking<Func>(m: &Secant2<f64>, c: f64, f: &Func) where Func: Fn(f64) -> (f64, f64) {
     let mut ev = vec![];

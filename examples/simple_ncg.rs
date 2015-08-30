@@ -1,7 +1,6 @@
-extern crate linear_space;
+extern crate ncg_min;
 
-use linear_space::lin::{Rn};
-use linear_space::ncg::{NonlinearCG};
+use ncg_min::{Rn, NonlinearCG};
 
 fn quad2d(x: &Rn<f64>, grad: &mut Rn<f64>) -> f64 {
     assert_eq!(x.len(), 2);

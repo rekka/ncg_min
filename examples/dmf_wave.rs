@@ -1,11 +1,10 @@
 //! Discrete Morse Flow solver of the 1D wave equation.
 extern crate gnuplot;
 
-extern crate linear_space;
+extern crate ncg_min;
 
 use gnuplot::{Figure, Fix, AxesCommon, PlotOption, DashType};
-use linear_space::lin::{Lin,Rn};
-use linear_space::ncg::{NonlinearCG};
+use ncg_min::{Lin, Rn, NonlinearCG};
 use std::f64::consts::PI;
 
 // Discrete Morse Flow energy for the wave equation.

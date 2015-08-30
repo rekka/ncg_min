@@ -4,7 +4,7 @@
 //! numbers: `Rn<S>`.
 //!
 //! ```rust
-//! use linear_space::lin::{Lin,Rn};
+//! use ncg_min::{Lin, Rn};
 //!
 //! let x = Rn::new(vec![1.,2.]);
 //! let y = Rn::new(vec![2.,-3.]);

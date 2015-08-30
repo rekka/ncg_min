@@ -1,7 +1,7 @@
 //! Implementation of a basic linear space trait.
 //!
 //! The main interface is `Lin` with an implementation for a vector of real
-//! numbers: `Rn<F>`.
+//! numbers: `Rn<S>`.
 //!
 //! ```rust
 //! use linear_space::lin::{Lin,Rn};
@@ -26,27 +26,27 @@ use std::iter::repeat;
 /// modify the object in place.
 pub trait Lin {
     /// Scalars for this linear space.
-    type F: Float;
+    type S: Float;
 
     /// Dot product (inner product).
-    fn dot(&self, other: &Self) -> Self::F;
+    fn dot(&self, other: &Self) -> Self::S;
 
     /// Multiplication by a constant.
-    fn scale(&mut self, a: Self::F) -> &mut Self;
+    fn scale(&mut self, a: Self::S) -> &mut Self;
 
     /// Adds a vector multiplied by a constant to this vector.
-    fn ray_to(&mut self, other: &Self, t: Self::F) -> &mut Self;
+    fn ray_to(&mut self, other: &Self, t: Self::S) -> &mut Self;
 
     /// Return the origin of the vector space to which self belongs too.
     fn origin(&self) -> Self;
 
     /// Norm of the vector.
-    fn norm(&self) -> Self::F {
+    fn norm(&self) -> Self::S {
         self.norm_squared().sqrt()
     }
 
     /// Square of the norm.
-    fn norm_squared(&self) -> Self::F {
+    fn norm_squared(&self) -> Self::S {
         self.dot(self)
     }
 
@@ -55,7 +55,7 @@ pub trait Lin {
     /// If norm is zero, causes division by zero.
     fn normalize(&mut self) -> &mut Self {
         let norm = self.norm();
-        self.scale(Self::F::one() / norm)
+        self.scale(Self::S::one() / norm)
     }
 
     /// Distance between two vectors.
@@ -64,18 +64,18 @@ pub trait Lin {
     /// `|x - v| = sqrt(x.x - 2 x.y + y.y)`
     /// to avoid copying.
     /// Therefore it is recommended to reimplement this method.
-    fn dist(&self, other: &Self) -> Self::F {
+    fn dist(&self, other: &Self) -> Self::S {
         (self.norm_squared() + other.norm_squared()
-            - (Self::F::one() + Self::F::one()) * self.dot(other)).sqrt()
+            - (Self::S::one() + Self::S::one()) * self.dot(other)).sqrt()
     }
 
     /// Adds a vector to this vector.
     fn add_mut(&mut self, other: &Self) -> &mut Self {
-        self.ray_to(other, Self::F::one())
+        self.ray_to(other, Self::S::one())
     }
 
     /// Creates a linear combination.
-    fn combine(&mut self,  a: Self::F, other: &Self, b: Self::F) -> &mut Self {
+    fn combine(&mut self,  a: Self::S, other: &Self, b: Self::S) -> &mut Self {
         self.scale(a).ray_to(other,b)
     }
 
@@ -84,7 +84,7 @@ pub trait Lin {
     /// `dir` does not have to be normalized, but must be nonzero.
     fn project_on(&mut self, dir: &Self) -> &mut Self {
         let a = self.dot(dir) / dir.norm_squared();
-        self.combine(Self::F::zero(), dir, a)
+        self.combine(Self::S::zero(), dir, a)
     }
 
     /// Project on a plane orthogonal to the given direction.
@@ -92,59 +92,59 @@ pub trait Lin {
     /// `dir` does not have to be normalized, but must be nonzero.
     fn project_ortho(&mut self, dir: &Self) -> &mut Self {
         let a = self.dot(dir) / dir.norm_squared();
-        self.combine(Self::F::one(), dir, -a)
+        self.combine(Self::S::one(), dir, -a)
     }
 }
 
 pub trait Dot {
-    type F: Float;
+    type S: Float;
 
     /// Dot product (inner product).
-    fn dot(&self, other: &Self) -> Self::F;
+    fn dot(&self, other: &Self) -> Self::S;
 
     /// Norm of the vector.
-    fn norm(&self) -> Self::F {
+    fn norm(&self) -> Self::S {
         self.norm_squared().sqrt()
     }
 
     /// Square of the norm.
-    fn norm_squared(&self) -> Self::F {
+    fn norm_squared(&self) -> Self::S {
         self.dot(self)
     }
 }
 
 /// An implementation of the Lin trait: an n-dimensional real vector.
 ///
-/// Backed by a `Vec<F>`, where `F` is `Float`.
+/// Backed by a `Vec<S>`, where `S` is `Float`.
 #[derive(Clone,Debug,PartialEq)]
-pub struct Rn<F: Float> {
-    vec: Vec<F>,
+pub struct Rn<S: Float> {
+    vec: Vec<S>,
 }
 
-impl<F: Float> Rn<F> {
-    pub fn new(v: Vec<F>) -> Self {
+impl<S: Float> Rn<S> {
+    pub fn new(v: Vec<S>) -> Self {
         Rn {vec: v}
     }
 }
 
-impl<F: Float> Deref for Rn<F> {
-    type Target = Vec<F>;
+impl<S: Float> Deref for Rn<S> {
+    type Target = Vec<S>;
 
-    fn deref<'a>(&'a self) -> &'a Vec<F> {
+    fn deref<'a>(&'a self) -> &'a Vec<S> {
         &self.vec
     }
 }
 
-impl<F: Float> DerefMut for Rn<F> {
-    fn deref_mut<'a>(&'a mut self) -> &'a mut Vec<F> {
+impl<S: Float> DerefMut for Rn<S> {
+    fn deref_mut<'a>(&'a mut self) -> &'a mut Vec<S> {
         &mut self.vec
     }
 }
 
-impl<F: Float> Mul<F> for Rn<F> {
-    type Output = Rn<F>;
+impl<S: Float> Mul<S> for Rn<S> {
+    type Output = Rn<S>;
 
-    fn mul(mut self, other: F) -> Self {
+    fn mul(mut self, other: S) -> Self {
         for x in self.iter_mut() {
             *x = *x * other;
         }
@@ -152,10 +152,10 @@ impl<F: Float> Mul<F> for Rn<F> {
     }
 }
 
-impl<F: Float> Div<F> for Rn<F> {
-    type Output = Rn<F>;
+impl<S: Float> Div<S> for Rn<S> {
+    type Output = Rn<S>;
 
-    fn div(mut self, other: F) -> Self {
+    fn div(mut self, other: S) -> Self {
         for x in self.iter_mut() {
             *x = *x / other;
         }
@@ -163,8 +163,8 @@ impl<F: Float> Div<F> for Rn<F> {
     }
 }
 
-impl<F: Float, T> Add<T> for Rn<F> where T: Borrow<Rn<F>> {
-    type Output = Rn<F>;
+impl<S: Float, T> Add<T> for Rn<S> where T: Borrow<Rn<S>> {
+    type Output = Rn<S>;
 
     fn add(mut self, other: T) -> Self {
         let other = other.borrow();
@@ -176,8 +176,8 @@ impl<F: Float, T> Add<T> for Rn<F> where T: Borrow<Rn<F>> {
     }
 }
 
-impl<F: Float, T> Sub<T> for Rn<F> where T: Borrow<Rn<F>> {
-    type Output = Rn<F>;
+impl<S: Float, T> Sub<T> for Rn<S> where T: Borrow<Rn<S>> {
+    type Output = Rn<S>;
 
     fn sub(mut self, other: T) -> Self {
         let other = other.borrow();
@@ -189,41 +189,41 @@ impl<F: Float, T> Sub<T> for Rn<F> where T: Borrow<Rn<F>> {
     }
 }
 
-impl<F: Float> Dot for Rn<F> {
-    type F = F;
+impl<S: Float> Dot for Rn<S> {
+    type S = S;
 
-    fn dot(&self, other: &Self) -> Self::F {
+    fn dot(&self, other: &Self) -> Self::S {
         assert_eq!(self.len(), other.len());
         self.iter().zip(other.iter())
-            .fold(Self::F::zero(), |sum, (&x, &y)| sum + x * y)
+            .fold(Self::S::zero(), |sum, (&x, &y)| sum + x * y)
     }
 }
 
-impl<F: Float> Lin for Rn<F> {
-    type F = F;
+impl<S: Float> Lin for Rn<S> {
+    type S = S;
 
-    fn dist(&self, other: &Self) -> Self::F {
+    fn dist(&self, other: &Self) -> Self::S {
         assert_eq!(self.len(), other.len());
         self.iter().zip(other.iter())
-            .fold(Self::F::zero(),
+            .fold(Self::S::zero(),
                 |sum, (&x, &y)| sum + (x - y).powi(2))
             .sqrt()
     }
 
-    fn dot(&self, other: &Self) -> Self::F {
+    fn dot(&self, other: &Self) -> Self::S {
         assert_eq!(self.len(), other.len());
         self.iter().zip(other.iter())
-            .fold(Self::F::zero(), |sum, (&x, &y)| sum + x * y)
+            .fold(Self::S::zero(), |sum, (&x, &y)| sum + x * y)
     }
 
-    fn scale(&mut self, a: Self::F) -> &mut Self {
+    fn scale(&mut self, a: Self::S) -> &mut Self {
         for x in self.iter_mut() {
             *x = *x * a;
         }
         self
     }
 
-    fn combine(&mut self,  a: Self::F, other: &Self, b: Self::F) -> &mut Self {
+    fn combine(&mut self,  a: Self::S, other: &Self, b: Self::S) -> &mut Self {
         assert_eq!(self.len(), other.len());
         for (x, y) in self.iter_mut().zip(other.iter()) {
             *x = *x * a + *y * b;
@@ -231,7 +231,7 @@ impl<F: Float> Lin for Rn<F> {
         self
     }
 
-    fn ray_to(&mut self,  other: &Self, b: Self::F) -> &mut Self {
+    fn ray_to(&mut self,  other: &Self, b: Self::S) -> &mut Self {
         assert_eq!(self.len(), other.len());
         for (x, y) in self.iter_mut().zip(other.iter()) {
             *x = *x + *y * b;
@@ -240,7 +240,7 @@ impl<F: Float> Lin for Rn<F> {
     }
 
     fn origin(&self) -> Self {
-        Rn::new(repeat(Self::F::zero()).take(self.len()).collect())
+        Rn::new(repeat(Self::S::zero()).take(self.len()).collect())
     }
 }
 
@@ -249,7 +249,7 @@ impl<F: Float> Lin for Rn<F> {
 // This cannot be done directly using
 //
 // ```
-// impl<F: Float> Lin for F {
+// impl<S: Float> Lin for S {
 // ...
 // ```
 //
@@ -261,36 +261,36 @@ impl<F: Float> Lin for Rn<F> {
 macro_rules! lin_float_impl {
     ($T:ident) => (
         impl Lin for $T {
-            type F = $T;
+            type S = $T;
 
-            fn dot(&self, other: &Self) -> Self::F {
+            fn dot(&self, other: &Self) -> Self::S {
                 *self * *other
             }
 
-            fn scale(&mut self, a: Self::F) -> &mut Self {
+            fn scale(&mut self, a: Self::S) -> &mut Self {
                 *self = *self * a;
                 self
             }
 
-            fn combine(&mut self,  a: Self::F, other: &Self, b: Self::F) -> &mut Self {
+            fn combine(&mut self,  a: Self::S, other: &Self, b: Self::S) -> &mut Self {
                 *self = *self * a + *other * b;
                 self
             }
 
-            fn ray_to(&mut self,  other: &Self, b: Self::F) -> &mut Self {
+            fn ray_to(&mut self,  other: &Self, b: Self::S) -> &mut Self {
                 *self = *self + *other * b;
                 self
             }
 
             fn origin(&self) -> Self {
-                Self::F::zero()
+                Self::S::zero()
             }
 
-            fn dist(&self, other: &Self) -> Self::F {
+            fn dist(&self, other: &Self) -> Self::S {
                 (*self - *other).abs()
             }
 
-            fn norm(&self) -> Self::F {
+            fn norm(&self) -> Self::S {
                 self.abs()
             }
         }

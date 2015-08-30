@@ -5,19 +5,19 @@ use lin::{Lin};
 
 /// Implementation of `secant2` method by _Hager & Zhang'06_.
 #[derive(Debug,Clone)]
-pub struct Secant2<F: Float> {
+pub struct Secant2<S: Float> {
     /// `delta` for Wolfe condition
-    pub delta: F,
+    pub delta: S,
     /// `sigma` for Wolfe condition
-    pub sigma: F,
+    pub sigma: S,
     /// `epsilon` for approximate Wolfe condition (to allow for value function to increase
     /// because of rounding of errors when close to the minimum)
-    pub epsilon: F,
+    pub epsilon: S,
     /// Bisection coefficient when secant fails; allowed values in `(0, 1)`
     /// (`0.5` is the midpoint of the interval)
-    pub theta: F,
+    pub theta: S,
     /// Extension factor for finding the initial bracketing interval; `> 1`
-    pub rho: F,
+    pub rho: S,
     /// Maximum number of iterations
     pub max_iter: i32,
     /// Maximum number of U3a--b bracketing iterations
@@ -33,8 +33,8 @@ pub enum Secant2Error {
     UBracketMaxIterReached(i32),
 }
 
-trait Secant2Default<F: Float> {
-    fn secant2_default() -> Secant2<F>;
+trait Secant2Default<S: Float> {
+    fn secant2_default() -> Secant2<S>;
 }
 
 impl Secant2Default<f32> for f32 {
@@ -69,19 +69,19 @@ impl Secant2Default<f64> for f64 {
     }
 }
 
-impl<F: Float + Secant2Default<F>> Secant2<F> {
+impl<S: Float + Secant2Default<S>> Secant2<S> {
     pub fn new() -> Self {
-        F::secant2_default()
+        S::secant2_default()
     }
 }
 
-enum BracketResult<F> {
-    Ok((F, F, F), (F, F, F)),
+enum BracketResult<S> {
+    Ok((S, S, S), (S, S, S)),
     MaxIterReached(i32),
-    // Wolfe(F), // TODO: implement early escape if solution is found during bracketing
+    // Wolfe(S), // TODO: implement early escape if solution is found during bracketing
 }
 
-impl<F: Float> Secant2<F> {
+impl<S: Float> Secant2<S> {
     /// Find an approximate minimum of a function _ϕ_ satisfying the Wolfe condition.
     ///
     ///   - `f` should be the function `f = |x| (ϕ(x), ϕ'(x))`.
@@ -89,18 +89,18 @@ impl<F: Float> Secant2<F> {
     ///   - `hint` may contain the value `(ϕ(0), ϕ'(0))` to avoid unnecessary evalution if
     ///     this value is already known (as is the case of the `NonlinearCG` minimization method).
     pub fn find_wolfe<Func>(&self,
-                            c: F,
+                            c: S,
                             mut f: Func,
-                            hint: Option<(F, F)>) -> Result<F, Secant2Error>
-        where Func: FnMut(F) -> (F, F) {
-        assert!(c > F::zero());
+                            hint: Option<(S, S)>) -> Result<S, Secant2Error>
+        where Func: FnMut(S) -> (S, S) {
+        assert!(c > S::zero());
 
         let mut f = |x| { let (fx, fdx) = f(x); (x, fx, fdx) };
 
         // save origin
         let o = match hint {
-            Some((v, d)) => (F::zero(), v, d),
-            None => f(F::zero()),
+            Some((v, d)) => (S::zero(), v, d),
+            None => f(S::zero()),
         };
 
         // ϕ(0) + ε
@@ -130,7 +130,7 @@ impl<F: Float> Secant2<F> {
             if self.wolfe(c, f0_eps, o.2) { return Ok(c.0); }
 
             let mut cx;
-            if c.2 >= F::zero() {
+            if c.2 >= S::zero() {
                 cx = secant(b, c);
                 ab.1 = c;
             } else if c.1 <= f0_eps {
@@ -158,7 +158,7 @@ impl<F: Float> Secant2<F> {
             let c = f(cx);
             if self.wolfe(c, f0_eps, o.2) { return Ok(c.0); }
 
-            if c.2 >= F::zero() {
+            if c.2 >= S::zero() {
                 ab.1 = c;
             } else if c.1 <= f0_eps {
                 ab.0 = c;
@@ -181,21 +181,21 @@ impl<F: Float> Secant2<F> {
     //
     // - `f0_eps` is `\phi(0) + \epsilon_k`
     fn ubracket<Func>(&self,
-                      mut a: (F, F, F),
-                      mut b: (F, F, F),
-                      mut f: Func, f0_eps: F) -> BracketResult<F>
-        where Func: FnMut(F) -> (F, F, F) {
+                      mut a: (S, S, S),
+                      mut b: (S, S, S),
+                      mut f: Func, f0_eps: S) -> BracketResult<S>
+        where Func: FnMut(S) -> (S, S, S) {
         // preconditions
         assert!(a.0 < b.0);
-        assert!(a.2 < F::zero());
-        assert!(b.2 < F::zero());
+        assert!(a.2 < S::zero());
+        assert!(b.2 < S::zero());
         assert!(a.1 <= f0_eps && f0_eps < b.1);
 
         for _ in 0..self.ubracket_max_iter {
             let cx = a.0 + self.theta * (b.0 - a.0);
             let c = f(cx);
 
-            if c.2 >= F::zero() {
+            if c.2 >= S::zero() {
                 return BracketResult::Ok(a, c);
             } else {
                 if c.1 <= f0_eps {
@@ -211,19 +211,19 @@ impl<F: Float> Secant2<F> {
 
     //Initial bracketing: `bracket(c)` method in [HZ'06]
     fn bracket<Func>(&self,
-                     mut a: (F, F, F),
-                     mut b: (F, F, F),
-                     mut f: Func) -> BracketResult<F>
-        where Func: FnMut(F) -> (F, F, F) {
+                     mut a: (S, S, S),
+                     mut b: (S, S, S),
+                     mut f: Func) -> BracketResult<S>
+        where Func: FnMut(S) -> (S, S, S) {
         // preconditions
         assert!(a.0 < b.0);
-        assert!(a.2 < F::zero());
+        assert!(a.2 < S::zero());
 
         let o = a;
         let f0_eps = o.1 + self.epsilon;
 
         for _ in 0..self.init_bracket_max_iter {
-            if b.2 >= F::zero() {
+            if b.2 >= S::zero() {
                 return BracketResult::Ok(a, b);
             } else if b.1 > f0_eps {
                 return self.ubracket(o, b, f, f0_eps);
@@ -237,42 +237,42 @@ impl<F: Float> Secant2<F> {
         BracketResult::MaxIterReached(self.init_bracket_max_iter)
     }
 
-    fn wolfe(&self, c: (F, F, F), f0_eps: F, fd0: F) -> bool {
+    fn wolfe(&self, c: (S, S, S), f0_eps: S, fd0: S) -> bool {
         // approximate Wolfe condition
         // ϕ(x)≤ϕ(0)+ε && σϕ'(0)≤ϕ'(x)≤(2δ-1)ϕ'(0)
-        c.1 <= f0_eps && self.sigma * fd0 <= c.2 && c.2 <= (self.delta + self.delta - F::one()) * fd0
+        c.1 <= f0_eps && self.sigma * fd0 <= c.2 && c.2 <= (self.delta + self.delta - S::one()) * fd0
     }
 
 }
 
-fn secant<F: Float>(a: (F, F, F), b: (F, F, F)) -> F {
+fn secant<S: Float>(a: (S, S, S), b: (S, S, S)) -> S {
     (a.0 * b.2 - b.0 * a.2) / (b.2 - a.2)
 }
 
 /// Implementation of a nonlinear conjugate gradient method.
 #[derive(Debug,Clone)]
-pub struct NonlinearCG<F: Float> {
+pub struct NonlinearCG<S: Float> {
     /// Nonlinear CG method
-    pub method: NonlinearCGMethod<F>,
+    pub method: NonlinearCGMethod<S>,
     /// Parameters for line minimization `secant2` method
-    pub line_method: Secant2<F>,
+    pub line_method: Secant2<S>,
     /// Initial line minimization bracketing interval: `[0, alpha0]`
-    pub alpha0: F,
+    pub alpha0: S,
     /// Multiplier for initial line minimization bracketing interval: `[0, psi2 * alpha]`,
     /// where `alpha` was obtained in previous iteration.
-    pub psi2: F,
+    pub psi2: S,
     /// Desired norm of the gradient
-    pub grad_norm_tol: F,
+    pub grad_norm_tol: S,
     /// Maximum number of iterations to take
     pub max_iter: i32,
 }
 
 #[derive(Debug,Clone)]
-pub enum NonlinearCGMethod<F> {
+pub enum NonlinearCGMethod<S> {
     /// Naive method of steepest descent
     SteepestDescent,
     /// `CG_DESCENT` method from [HZ'06] with `eta` parameter
-    HagerZhang(F),
+    HagerZhang(S),
 }
 
 #[derive(Debug,Clone)]
@@ -284,17 +284,17 @@ pub enum NonlinearCGError<V> {
 
 /// Information concerning each iteration of the nonlinear CG method
 #[derive(Debug,Clone)]
-pub struct NonlinearCGIteration<F> {
+pub struct NonlinearCGIteration<S> {
     /// Iteration number (indexed from 0)
     pub k: i32,
     /// Gradient norm at the beginning of the iteration
-    pub grad_norm: F,
+    pub grad_norm: S,
     /// Function value at the beginning of the iteration
-    pub value: F,
+    pub value: S,
     /// `beta` coefficient for the nonlinear CG search direction update
-    pub beta: F,
+    pub beta: S,
     /// Line minimization result
-    pub alpha: F,
+    pub alpha: S,
     /// Number of function evaluations by the line minimization method
     pub line_eval_count: i32,
 }
@@ -327,7 +327,7 @@ impl NonlinearCG<f64> {
     }
 }
 
-impl<F: Float> NonlinearCG<F> {
+impl<S: Float> NonlinearCG<S> {
     /// Mininimize the given nonlinear function over a linear space.
     ///
     /// The function `f` must provide its value as well as its gradient,
@@ -336,8 +336,8 @@ impl<F: Float> NonlinearCG<F> {
     pub fn minimize<Func, V>(&self,
                                        x0: &V,
                                        f: Func) -> Result<V, NonlinearCGError<V>>
-        where Func: FnMut(&V, &mut V) -> F,
-              V : Lin<F=F> + Clone {
+        where Func: FnMut(&V, &mut V) -> S,
+              V : Lin<S=S> + Clone {
         self.minimize_with_trace(x0, f, |_, _| {})
     }
 
@@ -349,9 +349,9 @@ impl<F: Float> NonlinearCG<F> {
                                        x0: &V,
                                        mut f: Func,
                                        mut callback: Callback) -> Result<V, NonlinearCGError<V>>
-        where Func: FnMut(&V, &mut V) -> F,
-              V : Lin<F=F> + Clone,
-              Callback: FnMut(&V, NonlinearCGIteration<V::F>) {
+        where Func: FnMut(&V, &mut V) -> S,
+              V : Lin<S=S> + Clone,
+              Callback: FnMut(&V, NonlinearCGIteration<V::S>) {
         // allocate storage
         let mut x = x0.clone();
         let mut g_k_1 = x0.clone();
@@ -381,27 +381,27 @@ impl<F: Float> NonlinearCG<F> {
 
             // compute new direction
             let beta = if k == 0 {
-                V::F::zero()
+                V::S::zero()
             } else {
                 match self.method {
-                    NonlinearCGMethod::SteepestDescent => V::F::zero(),
+                    NonlinearCGMethod::SteepestDescent => V::S::zero(),
                     NonlinearCGMethod::HagerZhang(eta) => {
                         // g_{k+1} - g_k
                         y.clone_from(&g_k_1);
-                        y.ray_to(&g_k, -V::F::one());
+                        y.ray_to(&g_k, -V::S::one());
                         let dk_yk = d_k.dot(&y);
-                        let two = V::F::one() + V::F::one();
+                        let two = V::S::one() + V::S::one();
                         let betan_k = (y.dot(&g_k_1)
                                        - two * d_k.dot(&g_k_1) * y.norm_squared() / dk_yk) / dk_yk;
-                        let eta_k = -V::F::one() / (d_k.norm() * eta.min(g_k.norm()));
+                        let eta_k = -V::S::one() / (d_k.norm() * eta.min(g_k.norm()));
                         betan_k.max(eta_k)
                     },
                 }
             };
 
             // compute new direction
-            d_k_1 = { d_k.combine(beta, &g_k_1, -V::F::one()); d_k };
-            assert!(d_k_1.dot(&g_k_1) < V::F::zero());
+            d_k_1 = { d_k.combine(beta, &g_k_1, -V::S::one()); d_k };
+            assert!(d_k_1.dot(&g_k_1) < V::S::zero());
 
             // minimize along the ray
             let mut line_eval_count = 0;

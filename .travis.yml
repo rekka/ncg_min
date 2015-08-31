@@ -1,0 +1,35 @@
+language: rust
+# run builds for all the trains (and more)
+rust:
+  - nightly
+  - beta
+  # check it compiles on the latest stable compiler
+  - stable
+  # and the first stable one (this should be bumped as the minimum
+  # Rust version required changes)
+  - 1.0.0
+
+# load travis-cargo
+before_script:
+  - |
+      pip install 'travis-cargo<0.2' --user &&
+      export PATH=$HOME/.local/bin:$PATH
+
+# the main build
+script:
+  - |
+      travis-cargo build &&
+      travis-cargo test &&
+      travis-cargo bench &&
+      travis-cargo --only stable doc
+after_success:
+  # upload the documentation from the build with stable (automatically only actually
+  # runs on the master branch, not individual PRs)
+  - travis-cargo --only stable doc-upload
+  # measure code coverage and upload to coveralls.io
+  - travis-cargo coveralls --no-sudo
+
+env:
+  global:
+    # encrypted github token for doc upload
+    - secure: IWyP1EDDf4zbQv1jQdVSBn8yQUXONDZzjy/YF3ZOxy82kJ3M8WJ7CS6tFRyinHzMqpfFNrOPSpL5JEs5wpbz0fzS3K1XHws16B92DG5eT66LoN5fgITtYOdKvgHKuEfvhqix4ME9fSpe/u7Cb/5tfc3kiHaSaoTAkr6oXeqPuHDl0ZNfDiKl9qL6BCpczpQRD451l9RlCAYGs1LGMYIsGe7kerUqaZ3gBmyQsiVOupnBRp7e5tMWCvqRlNCajLjwAWlay7BMNmreFa2WRcuEYNoy9OztQ7HwD54RSixDUf6JoR7ByVJI21CVAju/e8NsPoBRyAFIGvmL/GspPv1dMfWtoj30R3qD5GgMioUk8Xqh6seA8igj8lEG+EJ0mMyn66LNlj1bl+OnMD2fGdF8pAnxxlpTzCgKpVprZ4r31gBJiGNN+Emi8VmwcyuzE/1FwFFZVtl1qWaKhQ9CTzJsBOIyc6RxwB8ocvufvO7T+Qa6TgrxXGwUGDuGPhD7P3tZg5bSUN5jzX5Pg/8qaV+ttnKkoJKrl3/Qdz6xsDX5H1nX/EnaEQt322H7PdmRhCA+yNwTra9JIGhVT75Q/1D7hcQG3M8R5o1JMRNBdByTfi/87FHFJCkYkTQKJIjvIE2PuoJehrZLLeORIgFunw6ZXrL3siPHL+mmZzAn3IgsyZg=

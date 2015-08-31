@@ -2,9 +2,9 @@
 
 [![Build Status](https://travis-ci.org/rekka/ncg_min.svg?branch=master)](https://travis-ci.org/rekka/ncg_min)
 
-This [Rust] crate implements a [nonlinear conjugate gradient method][NCG
-wiki] for numerical minimization of general differentiable functions
-based only on their value and gradient.
+This [Rust] crate implements a [nonlinear conjugate gradient
+method][NCGwiki] for numerical minimization of general differentiable
+functions based only on their value and gradient.
 
 ## Documentation
 
@@ -21,5 +21,5 @@ Add this crate to your `Cargo.toml`:
 git = "https://github.com/rekka/ncg_min"
 ```
 
-[NCG wiki]: https://en.wikipedia.org/wiki/Nonlinear_conjugate_gradient_method
+[NCGwiki]: https://en.wikipedia.org/wiki/Nonlinear_conjugate_gradient_method
 [Rust]: https://www.rust-lang.org/

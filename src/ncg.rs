@@ -37,7 +37,7 @@ pub enum NonlinearCGError<V> {
     MaxIterReached(i32),
 }
 
-/// Information concerning each iteration of the nonlinear CG method
+/// Information about a performed iteration of the nonlinear CG method
 #[derive(Debug,Clone)]
 pub struct NonlinearCGIteration<S> {
     /// Iteration number (indexed from 0)

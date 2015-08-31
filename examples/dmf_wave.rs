@@ -55,7 +55,6 @@ fn main() {
 
         match r {
             Ok(v) => {
-                println!("{:?}", v);
                 let t = n as f64 * h;
                 let exact_u = xi.iter().map(|x| (PI * x).sin() * (PI * t).cos()
                                             + (4. * PI * x).sin() * (4. * PI * t).cos());

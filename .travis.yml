@@ -31,5 +31,7 @@ after_success:
 
 env:
   global:
+    # override the default `--features unstable` used for the nightly branch (optional)
+    - TRAVIS_CARGO_NIGHTLY_FEATURE=""
     # encrypted github token for doc upload
     - secure: IWyP1EDDf4zbQv1jQdVSBn8yQUXONDZzjy/YF3ZOxy82kJ3M8WJ7CS6tFRyinHzMqpfFNrOPSpL5JEs5wpbz0fzS3K1XHws16B92DG5eT66LoN5fgITtYOdKvgHKuEfvhqix4ME9fSpe/u7Cb/5tfc3kiHaSaoTAkr6oXeqPuHDl0ZNfDiKl9qL6BCpczpQRD451l9RlCAYGs1LGMYIsGe7kerUqaZ3gBmyQsiVOupnBRp7e5tMWCvqRlNCajLjwAWlay7BMNmreFa2WRcuEYNoy9OztQ7HwD54RSixDUf6JoR7ByVJI21CVAju/e8NsPoBRyAFIGvmL/GspPv1dMfWtoj30R3qD5GgMioUk8Xqh6seA8igj8lEG+EJ0mMyn66LNlj1bl+OnMD2fGdF8pAnxxlpTzCgKpVprZ4r31gBJiGNN+Emi8VmwcyuzE/1FwFFZVtl1qWaKhQ9CTzJsBOIyc6RxwB8ocvufvO7T+Qa6TgrxXGwUGDuGPhD7P3tZg5bSUN5jzX5Pg/8qaV+ttnKkoJKrl3/Qdz6xsDX5H1nX/EnaEQt322H7PdmRhCA+yNwTra9JIGhVT75Q/1D7hcQG3M8R5o1JMRNBdByTfi/87FHFJCkYkTQKJIjvIE2PuoJehrZLLeORIgFunw6ZXrL3siPHL+mmZzAn3IgsyZg=

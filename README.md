@@ -21,5 +21,15 @@ Add this crate to your `Cargo.toml`:
 git = "https://github.com/rekka/ncg_min"
 ```
 
+## TODO list
+
+- More NCG methods...
+- Constrained minimization: with respect to one or more constraints of
+  the type `g(x) = 0`.
+- Better API (`Lin` trait is kinda wonky).
+- Accept [nalgebra] and [cgmath] data.
+
 [NCGwiki]: https://en.wikipedia.org/wiki/Nonlinear_conjugate_gradient_method
 [Rust]: https://www.rust-lang.org/
+[nalgebra]: http://nalgebra.org/
+[cgmath]: https://github.com/bjz/cgmath-rs

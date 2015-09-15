@@ -6,7 +6,7 @@ license = "MIT"
 readme = "README.md"
 
 [dependencies]
-num = "*"
+num = "0.1"
 
 [dev-dependencies]
 quickcheck = "*"

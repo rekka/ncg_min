@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Rn","An implementation of the Lin trait: an n-dimensional real vector."]],"trait":[["Dot",""],["Lin","Trait defining basic operations for an element of a linear space."]]});

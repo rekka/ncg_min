@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["NonlinearCGError",""],["NonlinearCGMethod",""]],"struct":[["NonlinearCG","Implementation of a nonlinear conjugate gradient method."],["NonlinearCGIteration","Information about a performed iteration of the nonlinear CG method"]]});

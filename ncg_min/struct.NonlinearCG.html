@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `NonlinearCG` struct in crate `ncg_min`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, NonlinearCG">
+
+    <title>ncg_min::NonlinearCG - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../main.css">
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <section class="sidebar">
+        
+        <p class='location'><a href='index.html'>ncg_min</a></p><script>window.sidebarCurrent = {name: 'NonlinearCG', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </section>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='index.html'>ncg_min</a>::<wbr><a class='struct' href=''>NonlinearCG</a></span><span class='out-of-band'><span id='render-detail'>
+            <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                [<span class='inner'>&#x2212;</span>]
+            </a>
+        </span><a id='src-1908' class='srclink' href='../src/ncg_min/ncg.rs.html#9-23' title='goto source code'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct NonlinearCG&lt;S: <a class='trait' href='../num/traits/trait.Float.html' title='num::traits::Float'>Float</a>&gt; {
+    pub method: <a class='enum' href='../ncg_min/enum.NonlinearCGMethod.html' title='ncg_min::NonlinearCGMethod'>NonlinearCGMethod</a>&lt;S&gt;,
+    pub line_method: <a class='struct' href='../ncg_min/secant2/struct.Secant2.html' title='ncg_min::secant2::Secant2'>Secant2</a>&lt;S&gt;,
+    pub alpha0: S,
+    pub psi2: S,
+    pub grad_norm_tol: S,
+    pub max_iter: <a href='http://doc.rust-lang.org/nightly/std/primitive.i32.html'>i32</a>,
+}</pre><div class='docblock'><p>Implementation of a nonlinear conjugate gradient method.</p>
+</div><h2 class='fields'>Fields</h2>
+<table><tr class='stab '>
+                                  <td id='structfield.method'><code>method</code></td><td><div class='docblock'><p>Nonlinear CG method</p>
+</div></td></tr><tr class='stab '>
+                                  <td id='structfield.line_method'><code>line_method</code></td><td><div class='docblock'><p>Parameters for line minimization <code>secant2</code> method</p>
+</div></td></tr><tr class='stab '>
+                                  <td id='structfield.alpha0'><code>alpha0</code></td><td><div class='docblock'><p>Initial line minimization bracketing interval: <code>[0, alpha0]</code></p>
+</div></td></tr><tr class='stab '>
+                                  <td id='structfield.psi2'><code>psi2</code></td><td><div class='docblock'><p>Multiplier for initial line minimization bracketing interval: <code>[0, psi2 * alpha]</code>,
+where <code>alpha</code> was obtained in previous iteration.</p>
+</div></td></tr><tr class='stab '>
+                                  <td id='structfield.grad_norm_tol'><code>grad_norm_tol</code></td><td><div class='docblock'><p>Desired norm of the gradient</p>
+</div></td></tr><tr class='stab '>
+                                  <td id='structfield.max_iter'><code>max_iter</code></td><td><div class='docblock'><p>Maximum number of iterations to take</p>
+</div></td></tr></table><h2 id='methods'>Methods</h2><h3 class='impl'><code>impl <a class='struct' href='../ncg_min/struct.NonlinearCG.html' title='ncg_min::NonlinearCG'>NonlinearCG</a>&lt;<a href='http://doc.rust-lang.org/nightly/std/primitive.f32.html'>f32</a>&gt;</code></h3><div class='impl-items'><h4 id='method.new' class='method'><code>fn <a href='#method.new' class='fnname'>new</a>() -&gt; Self</code></h4>
+<div class='docblock'><p>Defaults for <code>f32</code> type: values mostly based on [HZ&#39;06]</p>
+</div></div><h3 class='impl'><code>impl <a class='struct' href='../ncg_min/struct.NonlinearCG.html' title='ncg_min::NonlinearCG'>NonlinearCG</a>&lt;<a href='http://doc.rust-lang.org/nightly/std/primitive.f64.html'>f64</a>&gt;</code></h3><div class='impl-items'><h4 id='method.new' class='method'><code>fn <a href='#method.new' class='fnname'>new</a>() -&gt; Self</code></h4>
+<div class='docblock'><p>Defaults for <code>f64</code> type: values mostly based on [HZ&#39;06]</p>
+</div></div><h3 class='impl'><code>impl&lt;S: <a class='trait' href='../num/traits/trait.Float.html' title='num::traits::Float'>Float</a>&gt; <a class='struct' href='../ncg_min/struct.NonlinearCG.html' title='ncg_min::NonlinearCG'>NonlinearCG</a>&lt;S&gt;</code></h3><div class='impl-items'><h4 id='method.minimize' class='method'><code>fn <a href='#method.minimize' class='fnname'>minimize</a>&lt;Func, V&gt;(&amp;self, x0: &amp;V, f: Func) -&gt; <a class='enum' href='http://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;V, <a class='enum' href='../ncg_min/enum.NonlinearCGError.html' title='ncg_min::NonlinearCGError'>NonlinearCGError</a>&lt;V&gt;&gt; <span class='where'>where Func: <a class='trait' href='http://doc.rust-lang.org/nightly/core/ops/trait.FnMut.html' title='core::ops::FnMut'>FnMut</a>(&amp;V, &amp;mut V) -&gt; S, V: <a class='trait' href='../ncg_min/trait.Lin.html' title='ncg_min::Lin'>Lin</a>&lt;S=S&gt; + <a class='trait' href='http://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a></span></code></h4>
+<div class='docblock'><p>Mininimize the given nonlinear function over a linear space.</p>
+
+<p>The function <code>f</code> must provide its value as well as its gradient,
+returned in the provided <code>&amp;mut V</code> (to avoid allocation).
+<code>x0</code> is used as the initial guess.</p>
+</div><h4 id='method.minimize_with_trace' class='method'><code>fn <a href='#method.minimize_with_trace' class='fnname'>minimize_with_trace</a>&lt;Func, V, Callback&gt;(&amp;self, x0: &amp;V, f: Func, callback: Callback) -&gt; <a class='enum' href='http://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;V, <a class='enum' href='../ncg_min/enum.NonlinearCGError.html' title='ncg_min::NonlinearCGError'>NonlinearCGError</a>&lt;V&gt;&gt; <span class='where'>where Func: <a class='trait' href='http://doc.rust-lang.org/nightly/core/ops/trait.FnMut.html' title='core::ops::FnMut'>FnMut</a>(&amp;V, &amp;mut V) -&gt; S, V: <a class='trait' href='../ncg_min/trait.Lin.html' title='ncg_min::Lin'>Lin</a>&lt;S=S&gt; + <a class='trait' href='http://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a>, Callback: <a class='trait' href='http://doc.rust-lang.org/nightly/core/ops/trait.FnMut.html' title='core::ops::FnMut'>FnMut</a>(&amp;V, <a class='struct' href='../ncg_min/struct.NonlinearCGIteration.html' title='ncg_min::NonlinearCGIteration'>NonlinearCGIteration</a>&lt;V::S&gt;)</span></code></h4>
+<div class='docblock'><p>The same as <code>minimize</code>, but allows to pass in a callback function that
+is called after every iteration.
+It is provided with the new point after the iteration is finished,
+and with additional information about the performed iteration.</p>
+</div></div><h2 id='implementations'>Trait Implementations</h2><h3 id='derived_implementations'>Derived Implementations </h3><h3 class='impl'><code>impl&lt;S: <a class='trait' href='http://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a> + <a class='trait' href='../num/traits/trait.Float.html' title='num::traits::Float'>Float</a>&gt; <a class='trait' href='http://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a> for <a class='struct' href='../ncg_min/struct.NonlinearCG.html' title='ncg_min::NonlinearCG'>NonlinearCG</a>&lt;S&gt;</code></h3><div class='impl-items'><h4 id='method.clone' class='method'><code>fn <a href='http://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone' class='fnname'>clone</a>(&amp;self) -&gt; <a class='struct' href='../ncg_min/struct.NonlinearCG.html' title='ncg_min::NonlinearCG'>NonlinearCG</a>&lt;S&gt;</code></h4>
+<h4 id='method.clone_from' class='method'><code>fn <a href='http://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone_from' class='fnname'>clone_from</a>(&amp;mut self, source: &amp;Self)</code></h4>
+</div><h3 class='impl'><code>impl&lt;S: <a class='trait' href='http://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html' title='core::fmt::Debug'>Debug</a> + <a class='trait' href='../num/traits/trait.Float.html' title='num::traits::Float'>Float</a>&gt; <a class='trait' href='http://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html' title='core::fmt::Debug'>Debug</a> for <a class='struct' href='../ncg_min/struct.NonlinearCG.html' title='ncg_min::NonlinearCG'>NonlinearCG</a>&lt;S&gt;</code></h3><div class='impl-items'><h4 id='method.fmt' class='method'><code>fn <a href='http://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html#method.fmt' class='fnname'>fmt</a>(&amp;self, __arg_0: &amp;mut <a class='struct' href='http://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html' title='core::fmt::Formatter'>Formatter</a>) -&gt; <a class='type' href='http://doc.rust-lang.org/nightly/core/fmt/type.Result.html' title='core::fmt::Result'>Result</a></code></h4>
+</div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <div id="help" class="hidden">
+        <div>
+            <div class="shortcuts">
+                <h1>Keyboard Shortcuts</h1>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h1>Search Tricks</h1>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>typedef</code> (or
+                    <code>tdef</code>).
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code>)
+                </p>
+            </div>
+        </div>
+    </div>
+
+    
+
+    <script>
+        window.rootPath = "../";
+        window.currentCrate = "ncg_min";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../jquery.js"></script>
+    <script src="../main.js"></script>
+    
+    <script async src="../search-index.js"></script>
+</body>
+</html>

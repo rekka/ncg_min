@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Secant2Error",""]],"struct":[["Secant2","Implementation of the `secant2` line minimization method by _Hager & Zhang'06_."]]});

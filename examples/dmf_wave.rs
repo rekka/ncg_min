@@ -44,7 +44,7 @@ fn main() {
     let mut u_n = Rn::new(u_n);
     let mut u_n_1 = u_n.clone();
 
-    let ncg = NonlinearCG::new();
+    let ncg = NonlinearCG::<f64>::new();
     let mut fg = Figure::new();
 
     for n in 1..n_max + 1 {

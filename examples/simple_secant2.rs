@@ -16,7 +16,7 @@ fn secant2_with_tracking<Func>(m: &Secant2<f64>, c: f64, f: &Func) where Func: F
 }
 
 fn main() {
-    let m = Secant2::new();
+    let m = Secant2::<f64>::new();
     // bad initial range guess
     let f = |x: f64| (x * (x - 1.), 2. * x - 1.);
     println!("f(x) = x (x - 1)");

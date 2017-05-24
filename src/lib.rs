@@ -14,7 +14,7 @@
 //! # Simple example
 //!
 //! ```
-//! let ncg = ncg_min::NonlinearCG::new();
+//! let ncg = ncg_min::NonlinearCG::<f64>::new();
 //!
 //! let r = ncg.minimize(&1f64, |x, grad| { *grad = 2. * x; x * x }).unwrap();
 //!

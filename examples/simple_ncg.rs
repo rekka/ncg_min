@@ -13,7 +13,7 @@ fn quad2d(x: &Rn<f64>, grad: &mut Rn<f64>) -> f64 {
 }
 
 fn main() {
-    let m = NonlinearCG::new();
+    let m = NonlinearCG::<f64>::new();
 
     let mut ev: Vec<f64> = vec![];
 

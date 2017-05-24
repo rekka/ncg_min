@@ -40,7 +40,7 @@ pub enum NonlinearCGError<S> {
 }
 
 /// Information about a performed iteration of the nonlinear CG method
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct NonlinearCGIteration<S> {
     /// Iteration number (indexed from 0)
     pub k: i32,
@@ -56,29 +56,15 @@ pub struct NonlinearCGIteration<S> {
     pub line_eval_count: i32,
 }
 
-impl NonlinearCG<f32> {
-    /// Defaults for `f32` type: values mostly based on [HZ'06]
+impl<S: From<f32> + Float> NonlinearCG<S> {
+    /// Defaults: values mostly based on [HZ'06]
     pub fn new() -> Self {
         NonlinearCG {
-            method: NonlinearCGMethod::HagerZhang(0.01),
+            method: NonlinearCGMethod::HagerZhang(From::from(0.01f32)),
             line_method: Default::default(),
-            alpha0: 1.,
-            psi2: 2.,
-            grad_norm_tol: 1e-3,
-            max_iter: 100,
-        }
-    }
-}
-
-impl NonlinearCG<f64> {
-    /// Defaults for `f64` type: values mostly based on [HZ'06]
-    pub fn new() -> Self {
-        NonlinearCG {
-            method: NonlinearCGMethod::HagerZhang(0.01),
-            line_method: Default::default(),
-            alpha0: 1.,
-            psi2: 2.,
-            grad_norm_tol: 1e-3,
+            alpha0: From::from(1f32),
+            psi2: From::from(2f32),
+            grad_norm_tol: From::from(1e-3f32),
             max_iter: 100,
         }
     }

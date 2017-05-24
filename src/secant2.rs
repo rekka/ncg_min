@@ -37,15 +37,15 @@ pub enum Secant2Error {
     UBracketMaxIterReached(i32),
 }
 
-impl Default for Secant2<f32> {
+impl<S: From<f32> + Float> Default for Secant2<S> {
     // Defaults for `secant2` method given in [HZ'06]
     fn default() -> Self {
         Secant2 {
-            delta: 0.1,
-            sigma: 0.9,
-            epsilon: 1e-6,
-            theta: 0.5,
-            rho: 5.,
+            delta: From::from(0.1f32),
+            sigma: From::from(0.9f32),
+            epsilon: From::from(1e-6f32),
+            theta: From::from(0.5f32),
+            rho: From::from(5f32),
             max_iter: 32,
             ubracket_max_iter: 32,
             init_bracket_max_iter: 16,
@@ -53,29 +53,7 @@ impl Default for Secant2<f32> {
     }
 }
 
-impl Default for Secant2<f64> {
-    // Defaults for `secant2` method given in [HZ'06]
-    fn default() -> Secant2<f64> {
-        Secant2 {
-            delta: 0.1,
-            sigma: 0.9,
-            epsilon: 1e-6,
-            theta: 0.5,
-            rho: 5.,
-            max_iter: 32,
-            ubracket_max_iter: 32,
-            init_bracket_max_iter: 16,
-        }
-    }
-}
-
-impl Secant2<f32> {
-    pub fn new() -> Self {
-        Default::default()
-    }
-}
-
-impl Secant2<f64> {
+impl<S: From<f32> + Float> Secant2<S> {
     pub fn new() -> Self {
         Default::default()
     }

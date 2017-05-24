@@ -1,8 +1,10 @@
 //! Implementation of a nonlinear conjugate gradient method.
 
-use num_traits::{Float};
+use num_traits::Float;
 use secant2::{Secant2, Secant2Error};
 use ndarray::prelude::*;
+use std::fmt;
+use std::error::Error;
 
 /// Implementation of a nonlinear conjugate gradient method.
 #[derive(Debug,Clone)]
@@ -103,10 +105,9 @@ impl<S: Float + 'static> NonlinearCG<S> {
     /// The function `f` must provide its value as well as its gradient,
     /// returned in the provided `&mut V` (to avoid allocation).
     /// `x0` is used as the initial guess.
-    pub fn minimize<Func>(&self,
-                                       x0: &[S],
-                                       f: Func) -> Result<Vec<S>, NonlinearCGError<S>>
-        where Func: FnMut(&[S], &mut [S]) -> S {
+    pub fn minimize<Func>(&self, x0: &[S], f: Func) -> Result<Vec<S>, NonlinearCGError<S>>
+        where Func: FnMut(&[S], &mut [S]) -> S
+    {
         self.minimize_with_trace(x0, f, |_, _| {})
     }
 
@@ -115,11 +116,13 @@ impl<S: Float + 'static> NonlinearCG<S> {
     /// It is provided with the new point after the iteration is finished,
     /// and with additional information about the performed iteration.
     pub fn minimize_with_trace<Func, Callback>(&self,
-                                       x0: &[S],
-                                       mut f: Func,
-                                       mut callback: Callback) -> Result<Vec<S>, NonlinearCGError<S>>
+                                               x0: &[S],
+                                               mut f: Func,
+                                               mut callback: Callback)
+                                               -> Result<Vec<S>, NonlinearCGError<S>>
         where Func: FnMut(&[S], &mut [S]) -> S,
-              Callback: FnMut(&[S], NonlinearCGIteration<S>) {
+              Callback: FnMut(&[S], NonlinearCGIteration<S>)
+    {
         let x0 = ArrayView::from_shape(x0.len(), x0).unwrap();
         // allocate storage
         let mut x = x0.to_owned();
@@ -135,7 +138,11 @@ impl<S: Float + 'static> NonlinearCG<S> {
 
         for k in 0..self.max_iter {
             // move from previous iteration (swap by moving)
-            g_k = { let t = g_k_1; g_k_1 = g_k; t };
+            g_k = {
+                let t = g_k_1;
+                g_k_1 = g_k;
+                t
+            };
             d_k = d_k_1;
             // compute gradient
             // TODO: use the last evaluation in the line minimization to save this call
@@ -159,16 +166,20 @@ impl<S: Float + 'static> NonlinearCG<S> {
                         y = y - &g_k;
                         let dk_yk = d_k.dot(&y);
                         let two = S::one() + S::one();
-                        let betan_k = (y.dot(&g_k_1)
-                                       - two * d_k.dot(&g_k_1) * y.norm_squared() / dk_yk) / dk_yk;
+                        let betan_k = (y.dot(&g_k_1) -
+                                       two * d_k.dot(&g_k_1) * y.norm_squared() / dk_yk) /
+                                      dk_yk;
                         let eta_k = -S::one() / (d_k.norm() * eta.min(g_k.norm()));
                         betan_k.max(eta_k)
-                    },
+                    }
                 }
             };
 
             // compute new direction
-            d_k_1 = { azip!(mut d_k, g_k_1 in { *d_k = *d_k * beta - g_k_1}); d_k };
+            d_k_1 = {
+                azip!(mut d_k, g_k_1 in { *d_k = *d_k * beta - g_k_1});
+                d_k
+            };
             assert!(d_k_1.dot(&g_k_1) < S::zero());
 
             // minimize along the ray
@@ -178,30 +189,67 @@ impl<S: Float + 'static> NonlinearCG<S> {
                     line_eval_count += 1;
                     x_temp.clone_from(&x);
                     azip!(mut x_temp, d_k_1 in { *x_temp = *x_temp + t * d_k_1});
-                    let v = f(x_temp.as_slice().unwrap(), grad_temp.as_slice_mut().unwrap());
+                    let v = f(x_temp.as_slice().unwrap(),
+                              grad_temp.as_slice_mut().unwrap());
                     (v, grad_temp.dot(&d_k_1))
                 };
-                self.line_method.find_wolfe(self.psi2 * alpha, &mut f_line,
-                                               Some((fx, g_k_1.dot(&d_k_1))))
+                self.line_method
+                    .find_wolfe(self.psi2 * alpha,
+                                &mut f_line,
+                                Some((fx, g_k_1.dot(&d_k_1))))
             };
             match r {
                 Ok(t) => alpha = t,
-                Err(e) => return Err(NonlinearCGError::LineMethodError(x.into_raw_vec(), d_k_1.into_raw_vec(), e)),
+                Err(e) => {
+                    return Err(NonlinearCGError::LineMethodError(x.into_raw_vec(),
+                                                                 d_k_1.into_raw_vec(),
+                                                                 e))
+                }
             }
 
             // update position
             azip!(mut x, d_k_1 in { *x = *x + alpha * d_k_1});
 
-            callback(x.as_slice().unwrap(), NonlinearCGIteration {
-                k: k,
-                beta: beta,
-                grad_norm: grad_norm,
-                value: fx,
-                alpha: alpha,
-                line_eval_count: line_eval_count,
-            });
+            callback(x.as_slice().unwrap(),
+                     NonlinearCGIteration {
+                         k: k,
+                         beta: beta,
+                         grad_norm: grad_norm,
+                         value: fx,
+                         alpha: alpha,
+                         line_eval_count: line_eval_count,
+                     });
         }
 
         return Err(NonlinearCGError::MaxIterReached(self.max_iter));
+    }
+}
+
+impl<S: fmt::Display> fmt::Display for NonlinearCGError<S> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &NonlinearCGError::LineMethodError(_, _, ref e) => {
+                write!(f, "Line minimization failed due to: {}", e)
+            }
+            &NonlinearCGError::MaxIterReached(n) => {
+                write!(f, "Maximum number of iterations reached: {}", n)
+            }
+        }
+    }
+}
+
+impl<S: fmt::Display + fmt::Debug> Error for NonlinearCGError<S> {
+    fn description(&self) -> &str {
+        match self {
+            &NonlinearCGError::LineMethodError(_, _, ref e) => e.description(),
+            &NonlinearCGError::MaxIterReached(_) => "Maximum number of iterations reached",
+        }
+    }
+
+    fn cause(&self) -> Option<&Error> {
+        match self {
+            &NonlinearCGError::LineMethodError(_, _, ref e) => Some(e),
+            &NonlinearCGError::MaxIterReached(_) => None,
+        }
     }
 }

@@ -16,18 +16,19 @@
 //! ```
 //! let ncg = ncg_min::NonlinearCG::<f64>::new();
 //!
-//! let r = ncg.minimize(&1f64, |x, grad| { *grad = 2. * x; x * x }).unwrap();
+//! let r = ncg.minimize(&[1f64], |x, grad| { grad[0] = 2. * x[0]; x[0] * x[0] }).unwrap();
 //!
-//! assert!(r.abs() <= 1e-3);
+//! assert!(r[0].abs() <= 1e-3);
 //! ```
 //!
 //! [HZ]: http://dx.doi.org/10.1145/1132973.1132979
 
-extern crate num;
+extern crate num_traits;
+#[macro_use]
+extern crate ndarray;
 
-mod lin;
+// mod lin;
 mod ncg;
 pub mod secant2;
 
-pub use lin::{Lin, Rn};
 pub use ncg::{NonlinearCG, NonlinearCGError, NonlinearCGIteration, NonlinearCGMethod};

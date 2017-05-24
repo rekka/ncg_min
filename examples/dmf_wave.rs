@@ -2,17 +2,19 @@
 extern crate gnuplot;
 
 extern crate ncg_min;
+extern crate ndarray;
 
 use gnuplot::{Figure, Fix, AxesCommon, PlotOption, DashType};
-use ncg_min::{Lin, Rn, NonlinearCG};
+use ncg_min::NonlinearCG;
 use std::f64::consts::PI;
 
 // Discrete Morse Flow energy for the wave equation.
-fn wave_energy(u: &Rn<f64>, u_n: &Rn<f64>, u_n_1: &Rn<f64>,
-               grad_u: &mut Rn<f64>, h: f64, kappa: f64) -> f64 {
-    let mut v = u.clone();
-    v.ray_to(&u_n, -2.);
-    v.add_mut(&u_n_1);
+fn wave_energy(u: &[f64], u_n: &[f64], u_n_1: &[f64],
+               grad_u: &mut [f64], h: f64, kappa: f64) -> f64 {
+    let mut v = u.to_owned();
+    for (v, (u_n, u_n_1)) in v.iter_mut().zip(u_n.iter().zip(u_n_1.iter())) {
+        *v += -2. * *u_n + *u_n_1;
+    }
 
     grad_u[0] = 0.;
     grad_u[u.len() - 1] = 0.;
@@ -40,8 +42,7 @@ fn main() {
     let n_max = (t_final / h) as i32;
     let xi: Vec<f64> = (0..k+1).map(|i| domain.0 + (domain.1 - domain.0) * i as f64 / k as f64)
                                .collect();
-    let u_n: Vec<f64> = xi.iter().map(|x| (PI * x).sin() + (4. * PI * x).sin()).collect();
-    let mut u_n = Rn::new(u_n);
+    let mut u_n: Vec<f64> = xi.iter().map(|x| (PI * x).sin() + (4. * PI * x).sin()).collect();
     let mut u_n_1 = u_n.clone();
 
     let ncg = NonlinearCG::<f64>::new();
@@ -49,7 +50,7 @@ fn main() {
 
     for n in 1..n_max + 1 {
         let r = {
-            let mut f = |x: &Rn<f64>, g: &mut Rn<f64>| wave_energy(x, &u_n, &u_n_1, g, h, kappa);
+            let mut f = |x: &[f64], g: &mut [f64]| wave_energy(x, &u_n, &u_n_1, g, h, kappa);
             ncg.minimize(&u_n, &mut f)
         };
 

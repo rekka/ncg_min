@@ -3,7 +3,7 @@
 //! The method is slightly modified to avoid some corner cases where the
 //! original method failed.
 
-use num::{Float, Zero, One};
+use num_traits::Float;
 
 /// Implementation of the `secant2` line minimization method by _Hager & Zhang'06_.
 #[derive(Debug,Clone)]

@@ -6,7 +6,8 @@ license = "MIT"
 readme = "README.md"
 
 [dependencies]
-num = "0.1"
+ndarray = "0.9.1"
+num-traits = "0.1.37"
 
 [dev-dependencies]
 quickcheck = "*"

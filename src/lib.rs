@@ -27,7 +27,6 @@ extern crate num_traits;
 #[macro_use]
 extern crate ndarray;
 
-// mod lin;
 mod ncg;
 pub mod secant2;
 

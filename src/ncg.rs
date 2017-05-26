@@ -2,9 +2,11 @@
 
 use num_traits::Float;
 use secant2::{Secant2, Secant2Error};
-use ndarray::prelude::*;
+use ndarray::Array1;
+use ndarray::ArrayView;
 use std::fmt;
 use std::error::Error;
+use std::mem::swap;
 
 /// Implementation of a nonlinear conjugate gradient method.
 #[derive(Debug,Clone)]
@@ -21,7 +23,7 @@ pub struct NonlinearCG<S: Float> {
     /// Desired norm of the gradient
     pub grad_norm_tol: S,
     /// Maximum number of iterations to take
-    pub max_iter: i32,
+    pub max_iter: u32,
 }
 
 #[derive(Debug,Clone)]
@@ -34,16 +36,21 @@ pub enum NonlinearCGMethod<S> {
 
 #[derive(Debug,Clone)]
 pub enum NonlinearCGError<S> {
-    /// `secant2` method failed to converge; returns current point and search direction.
-    LineMethodError(Vec<S>, Vec<S>, Secant2Error),
-    MaxIterReached(i32),
+    /// Line minimization `secant2` method failed to converge; returns the current point and search
+    /// direction.
+    LineMethodError {
+        x: Vec<S>,
+        d: Vec<S>,
+        err: Secant2Error,
+    },
+    MaxIterReached(u32),
 }
 
 /// Information about a performed iteration of the nonlinear CG method
 #[derive(Debug, Clone)]
 pub struct NonlinearCGIteration<S> {
     /// Iteration number (indexed from 0)
-    pub k: i32,
+    pub k: u32,
     /// Gradient norm at the beginning of the iteration
     pub grad_norm: S,
     /// Function value at the beginning of the iteration
@@ -53,7 +60,7 @@ pub struct NonlinearCGIteration<S> {
     /// Line minimization result
     pub alpha: S,
     /// Number of function evaluations by the line minimization method
-    pub line_eval_count: i32,
+    pub line_eval_count: u32,
 }
 
 impl<S: From<f32> + Float> NonlinearCG<S> {
@@ -124,11 +131,7 @@ impl<S: Float + 'static> NonlinearCG<S> {
 
         for k in 0..self.max_iter {
             // move from previous iteration (swap by moving)
-            g_k = {
-                let t = g_k_1;
-                g_k_1 = g_k;
-                t
-            };
+            swap(&mut g_k, &mut g_k_1);
             d_k = d_k_1;
             // compute gradient
             // TODO: use the last evaluation in the line minimization to save this call
@@ -166,11 +169,12 @@ impl<S: Float + 'static> NonlinearCG<S> {
                 azip!(mut d_k, g_k_1 in { *d_k = *d_k * beta - g_k_1});
                 d_k
             };
-            assert!(d_k_1.dot(&g_k_1) < S::zero());
+            assert!(d_k_1.dot(&g_k_1) < S::zero(),
+                    "The gradient and search direction point in opposite directions");
 
             // minimize along the ray
             let mut line_eval_count = 0;
-            let r = {
+            alpha = {
                 let mut f_line = |t| {
                     line_eval_count += 1;
                     x_temp.clone_from(&x);
@@ -183,39 +187,38 @@ impl<S: Float + 'static> NonlinearCG<S> {
                     .find_wolfe(self.psi2 * alpha,
                                 &mut f_line,
                                 Some((fx, g_k_1.dot(&d_k_1))))
+                    .map_err(|e| {
+                                 NonlinearCGError::LineMethodError {
+                                     x: x.clone().into_raw_vec(),
+                                     d: d_k_1.clone().into_raw_vec(),
+                                     err: e,
+                                 }
+                             })?
             };
-            match r {
-                Ok(t) => alpha = t,
-                Err(e) => {
-                    return Err(NonlinearCGError::LineMethodError(x.into_raw_vec(),
-                                                                 d_k_1.into_raw_vec(),
-                                                                 e))
-                }
-            }
 
             // update position
             azip!(mut x, d_k_1 in { *x = *x + alpha * d_k_1});
 
             callback(x.as_slice().unwrap(),
                      NonlinearCGIteration {
-                         k: k,
-                         beta: beta,
-                         grad_norm: grad_norm,
+                         k,
+                         beta,
+                         grad_norm,
                          value: fx,
-                         alpha: alpha,
-                         line_eval_count: line_eval_count,
+                         alpha,
+                         line_eval_count,
                      });
         }
 
-        return Err(NonlinearCGError::MaxIterReached(self.max_iter));
+        Err(NonlinearCGError::MaxIterReached(self.max_iter))
     }
 }
 
 impl<S: fmt::Display> fmt::Display for NonlinearCGError<S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &NonlinearCGError::LineMethodError(_, _, ref e) => {
-                write!(f, "Line minimization failed due to: {}", e)
+            &NonlinearCGError::LineMethodError { ref err, .. } => {
+                write!(f, "Line minimization failed due to: {}", err)
             }
             &NonlinearCGError::MaxIterReached(n) => {
                 write!(f, "Maximum number of iterations reached: {}", n)
@@ -227,14 +230,14 @@ impl<S: fmt::Display> fmt::Display for NonlinearCGError<S> {
 impl<S: fmt::Display + fmt::Debug> Error for NonlinearCGError<S> {
     fn description(&self) -> &str {
         match self {
-            &NonlinearCGError::LineMethodError(_, _, ref e) => e.description(),
+            &NonlinearCGError::LineMethodError { ref err, .. } => err.description(),
             &NonlinearCGError::MaxIterReached(_) => "Maximum number of iterations reached",
         }
     }
 
     fn cause(&self) -> Option<&Error> {
         match self {
-            &NonlinearCGError::LineMethodError(_, _, ref e) => Some(e),
+            &NonlinearCGError::LineMethodError { err: ref e, .. } => Some(e),
             &NonlinearCGError::MaxIterReached(_) => None,
         }
     }

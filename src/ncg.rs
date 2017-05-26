@@ -5,7 +5,7 @@ use secant2::{Secant2, Secant2Error};
 use ndarray::Array1;
 use ndarray::ArrayView;
 use std::fmt;
-use std::error::Error;
+use std::error::Error as StdError;
 use std::mem::swap;
 
 /// Implementation of a nonlinear conjugate gradient method.
@@ -28,14 +28,14 @@ pub struct NonlinearCG<S: Float> {
 
 #[derive(Debug,Clone)]
 pub enum NonlinearCGMethod<S> {
-    /// Naive method of steepest descent
+    /// Naive method of steepest descent. Really only good for testing.
     SteepestDescent,
     /// `CG_DESCENT` method from [HZ'06] with `eta` parameter
     HagerZhang(S),
 }
 
 #[derive(Debug,Clone)]
-pub enum NonlinearCGError<S> {
+pub enum Error<S> {
     /// Line minimization `secant2` method failed to converge; returns the current point and search
     /// direction.
     LineMethodError {
@@ -77,6 +77,12 @@ impl<S: From<f32> + Float> NonlinearCG<S> {
     }
 }
 
+impl<S: From<f32> + Float> Default for NonlinearCG<S> {
+    fn default() -> Self {
+        NonlinearCG::new()
+    }
+}
+
 trait Norm<S> {
     fn norm(&self) -> S;
     fn norm_squared(&self) -> S;
@@ -98,7 +104,7 @@ impl<S: Float + 'static> NonlinearCG<S> {
     /// The function `f` must provide its value as well as its gradient,
     /// returned in the provided `&mut V` (to avoid allocation).
     /// `x0` is used as the initial guess.
-    pub fn minimize<Func>(&self, x0: &[S], f: Func) -> Result<Vec<S>, NonlinearCGError<S>>
+    pub fn minimize<Func>(&self, x0: &[S], f: Func) -> Result<Vec<S>, Error<S>>
         where Func: FnMut(&[S], &mut [S]) -> S
     {
         self.minimize_with_trace(x0, f, |_, _| {})
@@ -111,8 +117,8 @@ impl<S: Float + 'static> NonlinearCG<S> {
     pub fn minimize_with_trace<Func, Callback>(&self,
                                                x0: &[S],
                                                mut f: Func,
-                                               mut callback: Callback)
-                                               -> Result<Vec<S>, NonlinearCGError<S>>
+                                               mut trace: Callback)
+                                               -> Result<Vec<S>, Error<S>>
         where Func: FnMut(&[S], &mut [S]) -> S,
               Callback: FnMut(&[S], NonlinearCGIteration<S>)
     {
@@ -188,7 +194,7 @@ impl<S: Float + 'static> NonlinearCG<S> {
                                 &mut f_line,
                                 Some((fx, g_k_1.dot(&d_k_1))))
                     .map_err(|e| {
-                                 NonlinearCGError::LineMethodError {
+                                 Error::LineMethodError {
                                      x: x.clone().into_raw_vec(),
                                      d: d_k_1.clone().into_raw_vec(),
                                      err: e,
@@ -199,7 +205,7 @@ impl<S: Float + 'static> NonlinearCG<S> {
             // update position
             azip!(mut x, d_k_1 in { *x = *x + alpha * d_k_1});
 
-            callback(x.as_slice().unwrap(),
+            trace(x.as_slice().unwrap(),
                      NonlinearCGIteration {
                          k,
                          beta,
@@ -210,35 +216,33 @@ impl<S: Float + 'static> NonlinearCG<S> {
                      });
         }
 
-        Err(NonlinearCGError::MaxIterReached(self.max_iter))
+        Err(Error::MaxIterReached(self.max_iter))
     }
 }
 
-impl<S: fmt::Display> fmt::Display for NonlinearCGError<S> {
+impl<S: fmt::Display> fmt::Display for Error<S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &NonlinearCGError::LineMethodError { ref err, .. } => {
+            &Error::LineMethodError { ref err, .. } => {
                 write!(f, "Line minimization failed due to: {}", err)
             }
-            &NonlinearCGError::MaxIterReached(n) => {
-                write!(f, "Maximum number of iterations reached: {}", n)
-            }
+            &Error::MaxIterReached(n) => write!(f, "Maximum number of iterations reached: {}", n),
         }
     }
 }
 
-impl<S: fmt::Display + fmt::Debug> Error for NonlinearCGError<S> {
+impl<S: fmt::Display + fmt::Debug> StdError for Error<S> {
     fn description(&self) -> &str {
         match self {
-            &NonlinearCGError::LineMethodError { ref err, .. } => err.description(),
-            &NonlinearCGError::MaxIterReached(_) => "Maximum number of iterations reached",
+            &Error::LineMethodError { ref err, .. } => err.description(),
+            &Error::MaxIterReached(_) => "Maximum number of iterations reached",
         }
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&StdError> {
         match self {
-            &NonlinearCGError::LineMethodError { err: ref e, .. } => Some(e),
-            &NonlinearCGError::MaxIterReached(_) => None,
+            &Error::LineMethodError { err: ref e, .. } => Some(e),
+            &Error::MaxIterReached(_) => None,
         }
     }
 }

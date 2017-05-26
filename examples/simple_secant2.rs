@@ -33,7 +33,7 @@ fn main() {
         (0.25 * x.powi(4) - 0.7066666 * x.powi(3) + 0.611 * x * x - 0.102 * x,
          (x - 0.1) * (x - 1.) * (x - 1.02))
     };
-    println!("f(x) = (x - 0.1) (x - 1) (x - 1.02)");
+    println!("f'(x) = (x - 0.1) (x - 1) (x - 1.02)");
     secant2_with_tracking(&m, 1.025, &f);
 
 

@@ -30,4 +30,4 @@ extern crate ndarray;
 mod ncg;
 pub mod secant2;
 
-pub use ncg::{NonlinearCG, NonlinearCGError, NonlinearCGIteration, NonlinearCGMethod};
+pub use ncg::{NonlinearCG, Error, NonlinearCGIteration, NonlinearCGMethod};

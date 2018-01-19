@@ -14,8 +14,8 @@ pub struct Secant2<S: Float> {
     pub delta: S,
     /// `sigma` for Wolfe condition
     pub sigma: S,
-    /// `epsilon` for approximate Wolfe condition (to allow for value function to increase
-    /// because of rounding of errors when close to the minimum)
+    /// `epsilon` for approximate Wolfe condition (to allow for the value of the function to
+    /// increase because of rounding of errors when close to the minimum)
     pub epsilon: S,
     /// Bisection coefficient when secant fails; allowed values in `(0, 1)`
     /// (`0.5` is the midpoint of the interval)
@@ -23,18 +23,18 @@ pub struct Secant2<S: Float> {
     /// Extension factor for finding the initial bracketing interval; `> 1`
     pub rho: S,
     /// Maximum number of iterations
-    pub max_iter: i32,
+    pub max_iter: u32,
     /// Maximum number of U3a--b bracketing iterations
-    pub ubracket_max_iter: i32,
+    pub ubracket_max_iter: u32,
     /// Maximum number of initial bracketing iterations
-    pub init_bracket_max_iter: i32,
+    pub init_bracket_max_iter: u32,
 }
 
 #[derive(Debug, Clone)]
 pub enum Secant2Error {
-    MaxIterReached(i32),
-    InitBracketMaxIterReached(i32),
-    UBracketMaxIterReached(i32),
+    MaxIterReached(u32),
+    InitBracketMaxIterReached(u32),
+    UBracketMaxIterReached(u32),
 }
 
 impl<S: From<f32> + Float> Default for Secant2<S> {
@@ -61,7 +61,7 @@ impl<S: From<f32> + Float> Secant2<S> {
 
 enum BracketResult<S> {
     Ok((S, S, S), (S, S, S)),
-    MaxIterReached(i32),
+    MaxIterReached(u32),
     // Wolfe(S), // TODO: implement early escape if solution is found during bracketing
 }
 

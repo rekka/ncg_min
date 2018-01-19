@@ -182,7 +182,7 @@ impl<S: Float + 'static> NonlinearCG<S> {
             };
             assert!(
                 d_k_1.dot(&g_k_1) < S::zero(),
-                "NCG failure: The gradient and the search direction point in opposite directions"
+                "NCG failure: The gradient and the search direction point in the same direction"
             );
 
             // minimize along the ray

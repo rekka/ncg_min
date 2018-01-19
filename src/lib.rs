@@ -23,11 +23,11 @@
 //!
 //! [HZ]: http://dx.doi.org/10.1145/1132973.1132979
 
-extern crate num_traits;
 #[macro_use]
 extern crate ndarray;
+extern crate num_traits;
 
 mod ncg;
 pub mod secant2;
 
-pub use ncg::{NonlinearCG, Error, NonlinearCGIteration, NonlinearCGMethod};
+pub use ncg::{Error, NonlinearCG, NonlinearCGIteration, NonlinearCGMethod};

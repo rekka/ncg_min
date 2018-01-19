@@ -8,7 +8,7 @@ use std::fmt;
 use std::error::Error;
 
 /// Implementation of the `secant2` line minimization method by _Hager & Zhang'06_.
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct Secant2<S: Float> {
     /// `delta` for Wolfe condition
     pub delta: S,
@@ -30,7 +30,7 @@ pub struct Secant2<S: Float> {
     pub init_bracket_max_iter: i32,
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub enum Secant2Error {
     MaxIterReached(i32),
     InitBracketMaxIterReached(i32),
@@ -72,12 +72,14 @@ impl<S: Float> Secant2<S> {
     ///   - `c` specifies the initial search interval `(0, c)`.
     ///   - `hint` may contain the value `(ϕ(0), ϕ'(0))` to avoid unnecessary evalution if
     ///     this value is already known (as is the case of the `NonlinearCG` minimization method).
-    pub fn find_wolfe<Func>(&self,
-                            c: S,
-                            mut f: Func,
-                            hint: Option<(S, S)>)
-                            -> Result<S, Secant2Error>
-        where Func: FnMut(S) -> (S, S)
+    pub fn find_wolfe<Func>(
+        &self,
+        c: S,
+        mut f: Func,
+        hint: Option<(S, S)>,
+    ) -> Result<S, Secant2Error>
+    where
+        Func: FnMut(S) -> (S, S),
     {
         assert!(c > S::zero());
 
@@ -166,7 +168,6 @@ impl<S: Float> Secant2<S> {
                     }
                 };
             }
-
         }
         Err(Secant2Error::MaxIterReached(self.max_iter))
     }
@@ -176,13 +177,15 @@ impl<S: Float> Secant2<S> {
     // The format of the triples is `(x, f(x), f'(x))`.
     //
     // - `f0_eps` is `\phi(0) + \epsilon_k`
-    fn ubracket<Func>(&self,
-                      mut a: (S, S, S),
-                      mut b: (S, S, S),
-                      mut f: Func,
-                      f0_eps: S)
-                      -> BracketResult<S>
-        where Func: FnMut(S) -> (S, S, S)
+    fn ubracket<Func>(
+        &self,
+        mut a: (S, S, S),
+        mut b: (S, S, S),
+        mut f: Func,
+        f0_eps: S,
+    ) -> BracketResult<S>
+    where
+        Func: FnMut(S) -> (S, S, S),
     {
         // preconditions
         assert!(a.0 < b.0);
@@ -210,7 +213,8 @@ impl<S: Float> Secant2<S> {
 
     //Initial bracketing: `bracket(c)` method in [HZ'06]
     fn bracket<Func>(&self, mut a: (S, S, S), mut b: (S, S, S), mut f: Func) -> BracketResult<S>
-        where Func: FnMut(S) -> (S, S, S)
+    where
+        Func: FnMut(S) -> (S, S, S),
     {
         // preconditions
         assert!(a.0 < b.0);
@@ -237,8 +241,8 @@ impl<S: Float> Secant2<S> {
     fn wolfe(&self, c: (S, S, S), f0_eps: S, fd0: S) -> bool {
         // approximate Wolfe condition
         // ϕ(x)≤ϕ(0)+ε && σϕ'(0)≤ϕ'(x)≤(2δ-1)ϕ'(0)
-        c.1 <= f0_eps && self.sigma * fd0 <= c.2 &&
-        c.2 <= (self.delta + self.delta - S::one()) * fd0
+        c.1 <= f0_eps && self.sigma * fd0 <= c.2
+            && c.2 <= (self.delta + self.delta - S::one()) * fd0
     }
 }
 
@@ -268,8 +272,10 @@ mod test {
         let s: Secant2<_> = Default::default();
 
         fn f(x: f64) -> (f64, f64) {
-            (0.25 * x.powi(4) - 0.7066666 * x.powi(3) + 0.611 * x * x - 0.102 * x,
-             (x - 0.1) * (x - 1.) * (x - 1.02))
+            (
+                0.25 * x.powi(4) - 0.7066666 * x.powi(3) + 0.611 * x * x - 0.102 * x,
+                (x - 0.1) * (x - 1.) * (x - 1.02),
+            )
         }
 
         let r = s.find_wolfe(1.025, f, None);
@@ -319,17 +325,16 @@ impl fmt::Display for Secant2Error {
             Secant2Error::MaxIterReached(n) => {
                 write!(f, "Maximum number of iterations reached: {}", n)
             }
-            Secant2Error::InitBracketMaxIterReached(n) => {
-                write!(f,
-                       "Maximum number of itaration reached in initial bracketing: {}",
-                       n)
-            }
-            Secant2Error::UBracketMaxIterReached(n) => {
-                write!(f,
-                       "Maximum number of iteration reached in u bracketing: {}",
-                       n)
-            }
-
+            Secant2Error::InitBracketMaxIterReached(n) => write!(
+                f,
+                "Maximum number of itaration reached in initial bracketing: {}",
+                n
+            ),
+            Secant2Error::UBracketMaxIterReached(n) => write!(
+                f,
+                "Maximum number of iteration reached in u bracketing: {}",
+                n
+            ),
         }
     }
 }
@@ -338,8 +343,12 @@ impl Error for Secant2Error {
     fn description(&self) -> &str {
         match *self {
             Secant2Error::MaxIterReached(_) => "Maximum number of iterations reached",
-            Secant2Error::InitBracketMaxIterReached(_) => "Maximum number of itaration reached in initial bracketing",
-            Secant2Error::UBracketMaxIterReached(_) => "Maximum number of iteration reached in u-bracketing",
+            Secant2Error::InitBracketMaxIterReached(_) => {
+                "Maximum number of itaration reached in initial bracketing"
+            }
+            Secant2Error::UBracketMaxIterReached(_) => {
+                "Maximum number of iteration reached in u-bracketing"
+            }
         }
     }
 

@@ -4,18 +4,19 @@ extern crate gnuplot;
 extern crate ncg_min;
 extern crate ndarray;
 
-use gnuplot::{Figure, Fix, AxesCommon, PlotOption, DashType};
+use gnuplot::{AxesCommon, DashType, Figure, Fix, PlotOption};
 use ncg_min::NonlinearCG;
 use std::f64::consts::PI;
 
 // Discrete Morse Flow energy for the wave equation.
-fn wave_energy(u: &[f64],
-               u_n: &[f64],
-               u_n_1: &[f64],
-               grad_u: &mut [f64],
-               h: f64,
-               kappa: f64)
-               -> f64 {
+fn wave_energy(
+    u: &[f64],
+    u_n: &[f64],
+    u_n_1: &[f64],
+    grad_u: &mut [f64],
+    h: f64,
+    kappa: f64,
+) -> f64 {
     let mut v = u.to_owned();
     for (v, (u_n, u_n_1)) in v.iter_mut().zip(u_n.iter().zip(u_n_1.iter())) {
         *v += -2. * *u_n + *u_n_1;
@@ -24,14 +25,14 @@ fn wave_energy(u: &[f64],
     grad_u[0] = 0.;
     grad_u[u.len() - 1] = 0.;
     for i in 1..u.len() - 1 {
-        grad_u[i] = (4. * v[i] + v[i - 1] + v[i + 1]) / (6. * h * h) +
-                    kappa * (2. * u[i] - u[i - 1] - u[i + 1]);
+        grad_u[i] = (4. * v[i] + v[i - 1] + v[i + 1]) / (6. * h * h)
+            + kappa * (2. * u[i] - u[i - 1] - u[i + 1]);
     }
 
     let mut e = 0.;
     for i in 1..u.len() {
-        e += (v[i - 1].powi(2) + v[i - 1] * v[i] + v[i].powi(2)) / (6. * h * h) +
-             (kappa / 2.) * (u[i - 1] - u[i]).powi(2);
+        e += (v[i - 1].powi(2) + v[i - 1] * v[i] + v[i].powi(2)) / (6. * h * h)
+            + (kappa / 2.) * (u[i - 1] - u[i]).powi(2);
     }
     e
 }
@@ -65,11 +66,9 @@ fn main() {
         match r {
             Ok(v) => {
                 let t = n as f64 * h;
-                let exact_u = xi.iter()
-                    .map(|x| {
-                             (PI * x).sin() * (PI * t).cos() +
-                             (4. * PI * x).sin() * (4. * PI * t).cos()
-                         });
+                let exact_u = xi.iter().map(|x| {
+                    (PI * x).sin() * (PI * t).cos() + (4. * PI * x).sin() * (4. * PI * t).cos()
+                });
                 fg.clear_axes();
                 fg.axes2d()
                     .set_y_range(Fix(-1.0), Fix(1.0))

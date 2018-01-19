@@ -13,12 +13,12 @@ use std::mem::swap;
 pub struct NonlinearCG<S: Float> {
     /// Nonlinear CG method
     pub method: NonlinearCGMethod<S>,
-    /// Parameters for line minimization `secant2` method
+    /// Parameters for the line minimization `secant2` method
     pub line_method: Secant2<S>,
     /// Initial line minimization bracketing interval: `[0, alpha0]`
     pub alpha0: S,
-    /// Multiplier for initial line minimization bracketing interval: `[0, psi2 * alpha]`,
-    /// where `alpha` was obtained in previous iteration.
+    /// Multiplier for the initial line minimization bracketing interval: `[0, psi2 * alpha]`,
+    /// where `alpha` was obtained in the previous iteration.
     pub psi2: S,
     /// Desired norm of the gradient
     pub grad_norm_tol: S,
@@ -28,10 +28,10 @@ pub struct NonlinearCG<S: Float> {
 
 #[derive(Debug,Clone)]
 pub enum NonlinearCGMethod<S> {
-    /// Naive method of steepest descent. Really only good for testing.
+    /// The naive method of steepest descent. Really only good for testing.
     SteepestDescent,
-    /// `CG_DESCENT` method from [HZ'06] with `eta` parameter
-    HagerZhang(S),
+    /// The `CG_DESCENT` method from [HZ'06] with an `eta` parameter
+    HagerZhang{eta: S},
 }
 
 #[derive(Debug,Clone)]
@@ -67,7 +67,7 @@ impl<S: From<f32> + Float> NonlinearCG<S> {
     /// Defaults: values mostly based on [HZ'06]
     pub fn new() -> Self {
         NonlinearCG {
-            method: NonlinearCGMethod::HagerZhang(From::from(0.01f32)),
+            method: NonlinearCGMethod::HagerZhang{eta: From::from(0.01f32)},
             line_method: Default::default(),
             alpha0: From::from(1f32),
             psi2: From::from(2f32),
@@ -136,7 +136,7 @@ impl<S: Float + 'static> NonlinearCG<S> {
         let mut alpha = self.alpha0;
 
         for k in 0..self.max_iter {
-            // move from previous iteration (swap by moving)
+            // move from previous iteration
             swap(&mut g_k, &mut g_k_1);
             d_k = d_k_1;
             // compute gradient
@@ -156,7 +156,7 @@ impl<S: Float + 'static> NonlinearCG<S> {
             } else {
                 match self.method {
                     NonlinearCGMethod::SteepestDescent => S::zero(),
-                    NonlinearCGMethod::HagerZhang(eta) => {
+                    NonlinearCGMethod::HagerZhang{eta} => {
                         y.clone_from(&g_k_1);
                         y = y - &g_k;
                         let dk_yk = d_k.dot(&y);
@@ -170,7 +170,7 @@ impl<S: Float + 'static> NonlinearCG<S> {
                 }
             };
 
-            // compute new direction
+            // compute the new direction
             d_k_1 = {
                 azip!(mut d_k, g_k_1 in { *d_k = *d_k * beta - g_k_1});
                 d_k
@@ -202,7 +202,7 @@ impl<S: Float + 'static> NonlinearCG<S> {
                              })?
             };
 
-            // update position
+            // update the position
             azip!(mut x, d_k_1 in { *x = *x + alpha * d_k_1});
 
             trace(x.as_slice().unwrap(),
